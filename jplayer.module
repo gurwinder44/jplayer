@@ -26,6 +26,18 @@ function jplayer_menu() {
 }
 
 /**
+ * Implements hook_help().
+ */
+function jplayer_help($path, $arg)
+{
+    switch($path) {
+        case "admin/help#jplayer":
+        return '<p>' . t("Plays audio to be transcribed!") . '</p>';
+            break;
+    }
+}
+
+/**
  * Implements hook_theme().
  */
 function jplayer_theme() {

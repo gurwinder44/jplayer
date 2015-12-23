@@ -3,6 +3,10 @@
  * Drupal behaviors for jPlayer.
  */
 
+var songDuration;
+var segments;
+var stopTime = 5;
+
 (function ($) {
   
   Drupal.jPlayer = Drupal.jPlayer || {};
@@ -58,6 +62,10 @@
                 $(this).jPlayer("play");
               }
             },
+            loadeddata: function(event) {
+                songDuration = event.jPlayer.status.duration;
+                segments = songDuration / 5;
+            },
             swfPath: Drupal.settings.jPlayer.swfPath,
             cssSelectorAncestor: '#'+playerId+'_interface',
             solution: playerSettings.solution,
@@ -66,6 +74,7 @@
             volume: playerSettings.volume,
             muted: playerSettings.muted
           });
+         
         }
         else {
           // Initialise playlist player
@@ -100,6 +109,10 @@
                 });
               }
               
+            },
+            loadeddata: function(event) {
+                songDuration = event.jPlayer.status.duration;
+                segments = songDuration / 5;
             },
             swfPath: Drupal.settings.jPlayer.swfPath,
             cssSelectorAncestor: '#'+playerId+'_interface',
