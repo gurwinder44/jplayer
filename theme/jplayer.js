@@ -63,6 +63,7 @@ var stopTime = 5;
               }
             },
             loadeddata: function(event) {
+                // Get duration and calculate number of segments
                 songDuration = event.jPlayer.status.duration;
                 segments = songDuration / 5;
             },
@@ -73,6 +74,13 @@ var stopTime = 5;
             preload: playerSettings.preload,
             volume: playerSettings.volume,
             muted: playerSettings.muted
+          });
+          
+          // Pause after every 5 seconds
+          $(player).bind($.jPlayer.event.timeupdate, function(event) {
+              if(event.jPlayer.status.currentTime > stopTime) {
+                  $(this).jPlayer("pause");
+              }
           });
          
         }
@@ -111,6 +119,7 @@ var stopTime = 5;
               
             },
             loadeddata: function(event) {
+                // Get duration and calculate number of segments
                 songDuration = event.jPlayer.status.duration;
                 segments = songDuration / 5;
             },
@@ -121,6 +130,13 @@ var stopTime = 5;
             preload: playerSettings.preload,
             volume: playerSettings.volume,
             muted: playerSettings.muted
+          });
+          
+          // Pause after every 5 seconds
+          $(player).bind($.jPlayer.event.timeupdate, function(event) {
+              if(event.jPlayer.status.currentTime > stopTime) {
+                  $(this).jPlayer("pause");
+              }
           });
           
           // Next
@@ -171,7 +187,8 @@ var stopTime = 5;
     //$(wrapper).parent().attr('class', 'jp-'+kind);
     
     if (play == true) {
-      $(player).jPlayer('play');
+      $(player).jPlayer('play', stopTime);
+      stopTime = stopTime + 5;
     }
   };
   
