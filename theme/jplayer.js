@@ -67,6 +67,9 @@ var stopTime = 5;
                 songDuration = event.jPlayer.status.duration;
                 segments = songDuration / 5;
             },
+            ended: function() {
+                stopTime = 0;
+            },
             swfPath: Drupal.settings.jPlayer.swfPath,
             cssSelectorAncestor: '#'+playerId+'_interface',
             solution: playerSettings.solution,
@@ -79,7 +82,8 @@ var stopTime = 5;
           // Pause after every 5 seconds
           $(player).bind($.jPlayer.event.timeupdate, function(event) {
               if(event.jPlayer.status.currentTime > stopTime) {
-                  $(this).jPlayer("pause");
+                  $(this).jPlayer("pause");                  
+                  stopTime = stopTime + 5;
               }
           });
          
@@ -123,6 +127,9 @@ var stopTime = 5;
                 songDuration = event.jPlayer.status.duration;
                 segments = songDuration / 5;
             },
+            ended: function() {
+                stopTime = 0;
+            },
             swfPath: Drupal.settings.jPlayer.swfPath,
             cssSelectorAncestor: '#'+playerId+'_interface',
             solution: playerSettings.solution,
@@ -136,6 +143,7 @@ var stopTime = 5;
           $(player).bind($.jPlayer.event.timeupdate, function(event) {
               if(event.jPlayer.status.currentTime > stopTime) {
                   $(this).jPlayer("pause");
+                  stopTime = stopTime + 5;
               }
           });
           
@@ -187,8 +195,7 @@ var stopTime = 5;
     //$(wrapper).parent().attr('class', 'jp-'+kind);
     
     if (play == true) {
-      $(player).jPlayer('play', stopTime);
-      stopTime = stopTime + 5;
+      $(player).jPlayer('play');
     }
   };
   

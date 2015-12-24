@@ -37,6 +37,150 @@ function jplayer_help($path, $arg)
     }
 }
 
+
+/**
+ * Implements hook_block_info().
+ */
+function jplayer_block_info()
+{
+    $blocks['transcriptform'] = array(
+        'info'  => t('Transciption form block'),
+        'cache' => DRUPAL_CACHE_GLOBAL,
+    );
+    return $blocks;
+}
+
+
+/**
+ * Implements hook_block_view().
+ */
+function jplayer_block_view($delta = '')
+{
+    global $segmentCount;
+    $block = array();
+    switch($delta) {
+        case 'transcriptform':
+            //$block['subject'] = t('Subject');
+            $block['content'] = drupal_get_form('jplayer_form');
+            break;
+    }
+    return $block;
+}
+
+
+/**
+ * Master form function
+ */
+function jplayer_form($form, &$form_state)
+{    
+    // Define global segment count here?
+    /*global $maxSegmentCount;
+    global $maxPages;
+    $GLOBALS['maxSegments'] = 5;
+    $GLOBALS['maxPages'] = 3;*/
+    
+    if(isset($form_state['values'])) {
+        $currStep = $form_state['step'] + 1;
+    }
+    else {
+        $currStep = 0;
+    }
+    
+    $form_state['step'] = $currStep;
+    $allSteps = getForm();
+    $currForm = $allSteps[$currStep];
+    
+    return $currForm;    
+}
+
+
+/**
+ * Auxiliary function to get number of pages
+ */
+function getNumberOfSteps() {
+    return count(getForm());
+}
+
+
+/**
+ * Form builder function
+ */
+function getForm()
+{
+    $form = array();
+    
+    $maxPages = 3;
+    
+    // 6 segments (30 seconds worth of audio) on one page
+    $maxSegments = 6;
+    
+    for($i=1; $i<=$maxPages; $i++) {
+        $step[$i] = array();
+        
+        $step[$i]['page'] = array(
+            '#type' => 'fieldset',
+            '#title' => t('Page @number of @total', array('@number' => $i, '@total' => $maxPages)),
+            '#collapsible' => TRUE,
+            '#collapsed' => FALSE,
+        );
+        
+        for($j=1; $j<=$maxSegments; $j++) {
+            
+            $step[$i]['page'][$j] = array(
+                '#type' => 'textfield',
+                '#title' => t('Segment @number', array('@number' => $j)),
+                '#default_value' => NULL,
+            );    
+        }
+        
+        if($i == $maxPages) {
+            $step[$i]['next'] = array(
+                '#type' => 'submit',
+                '#value' => t('Submit'),
+            );
+        }
+        
+        else {
+            $step[$i]['next'] = array(
+                '#type' => 'submit',
+                '#value' => t('Next Page'),
+            );
+        }
+    
+        $form[] = $step[$i];
+    }
+    
+    return $form;
+}
+
+
+/**
+ * Form submission
+ */
+function jplayer_form_submit($form, &$form_state)
+{
+    $form_state['storedvalues'][$form_state['step']] = $form_state['values'];
+    if($form_state['step']+1 != getNumberofSteps()) {
+        $form_state['rebuild'] = TRUE;
+        
+    }
+    else {
+        $finalFormValues = array();
+        $currStep = 0;
+        foreach(getForm() as $step) {
+            foreach($step as $key => $value) {
+                if(strcmp($key,"submit") != 0) {
+                    $finalFormValues['key'] = $form_state['storedvalues'][$currStep];
+                }
+            }
+        $currStep++;
+        }
+    // Store the values from $finalFormValues into database/file
+    drupal_set_message(t('Form submitted; your data will saved!'));
+    }
+}
+
+
 /**
  * Implements hook_theme().
  */
