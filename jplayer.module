@@ -21,8 +21,28 @@ function jplayer_menu() {
     'description' => 'Configure the settings for the jPlayer module.',
     'file' => 'includes/jplayer.admin.inc',
   );
+  
+  /* If using menu callback in javascript
+   * Get value from javascript file
+  $items['content/transcriber/%'] = array(
+      'title' => 'Scrap page',
+      'description' => 'Just to pass values from javascript file to module file',
+      'page callback' => 'pass_function',
+      'page arguments' => array(2),
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+  );*/
 
   return $items;
+}
+
+/**
+ * Process received value from javascript file
+ */
+function pass_function($arg) {
+    global $seg;
+    $seg = $arg;
+    return $seg;
 }
 
 /**
@@ -37,12 +57,12 @@ function jplayer_help($path, $arg)
     }
 }
 
-
 /**
  * Implements hook_block_info().
  */
 function jplayer_block_info()
 {
+    
     $blocks['transcriptform'] = array(
         'info'  => t('Transciption form block'),
         'cache' => DRUPAL_CACHE_GLOBAL,
@@ -50,31 +70,30 @@ function jplayer_block_info()
     return $blocks;
 }
 
-
 /**
  * Implements hook_block_view().
  */
 function jplayer_block_view($delta = '')
 {
-    global $segmentCount;
     $block = array();
+    global $seg;
+    $seg = 10;
     switch($delta) {
         case 'transcriptform':
             //$block['subject'] = t('Subject');
-            $block['content'] = drupal_get_form('jplayer_form');
+            $block['content'] = drupal_get_form('tempForm');
             break;
     }
     return $block;
 }
-
 
 /**
  * Master form function
  */
 function jplayer_form($form, &$form_state)
 {    
-    // Define global segment count here?
-    /*global $maxSegmentCount;
+    /* Define global segment count here?
+    global $maxSegmentCount;
     global $maxPages;
     $GLOBALS['maxSegments'] = 5;
     $GLOBALS['maxPages'] = 3;*/
@@ -93,7 +112,6 @@ function jplayer_form($form, &$form_state)
     return $currForm;    
 }
 
-
 /**
  * Auxiliary function to get number of pages
  */
@@ -101,6 +119,37 @@ function getNumberOfSteps() {
     return count(getForm());
 }
 
+/**
+ * Temporary single-page form function for testing
+ */
+function tempForm() {
+    $cookie_name = 'seginfo';
+    $form = array();
+    
+    // Get the number of segments from the cookie
+    $segCount = $_COOKIE[$cookie_name];
+    
+    $form['transcript'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Transcript'),
+        '#collapsible' => TRUE,
+        '#collapsed' => FALSE,
+    );
+        
+    for($i=1; $i<=$segCount; $i++) {
+        $form['transcript'][$i] = array(
+            '#type' => 'textfield',
+            '#title' => t('Segment @number of @total', array('@number' => $i, '@total' => $segCount))
+        );
+    }
+    
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => 'Submit',
+    );
+    
+    return $form;
+}
 
 /**
  * Form builder function
@@ -119,7 +168,7 @@ function getForm()
         
         $step[$i]['page'] = array(
             '#type' => 'fieldset',
-            '#title' => t('Page @number of @total', array('@number' => $i, '@total' => $maxPages)),
+            '#title' => t('@scrap Page @number of @total', array('@number' => $i, '@total' => $maxPages)),
             '#collapsible' => TRUE,
             '#collapsed' => FALSE,
         );
@@ -153,7 +202,6 @@ function getForm()
     return $form;
 }
 
-
 /**
  * Form submission
  */
@@ -179,7 +227,6 @@ function jplayer_form_submit($form, &$form_state)
     drupal_set_message(t('Form submitted; your data will saved!'));
     }
 }
-
 
 /**
  * Implements hook_theme().

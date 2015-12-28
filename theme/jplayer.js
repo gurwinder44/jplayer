@@ -65,7 +65,18 @@ var stopTime = 5;
             loadeddata: function(event) {
                 // Get duration and calculate number of segments
                 songDuration = event.jPlayer.status.duration;
-                segments = songDuration / 5;
+                segments = Math.ceil(songDuration/5);
+                
+                /* Using menu callback to send value
+                 * Send no. of segments to .module file through URL
+                $.get(
+                    // Callback URL
+                    "http://acquia-drupal-7-39-45-6271.dd:8083/jplayer/"+segments
+                );*/
+                
+                // Set a cookie containing the number of segments
+                document.cookie = 'seginfo='+segments+'; path=/';
+                
             },
             ended: function() {
                 stopTime = 0;
@@ -125,7 +136,18 @@ var stopTime = 5;
             loadeddata: function(event) {
                 // Get duration and calculate number of segments
                 songDuration = event.jPlayer.status.duration;
-                segments = songDuration / 5;
+                segments = Math.ceil(songDuration/5);
+                
+                /* Using menu callback to send value
+                 * Send no. of segments to .module file through URL
+                $.get(
+                    // Callback URL
+                    "http://acquia-drupal-7-39-45-6271.dd:8083/jplayer/"+segments
+                );*/
+                
+                // Set a cookie containing the number of segments
+                document.cookie = 'seginfo='+segments+'; path=/';
+                
             },
             ended: function() {
                 stopTime = 0;
