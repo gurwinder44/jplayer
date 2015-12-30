@@ -6,6 +6,7 @@
 var songDuration;
 var segments;
 var stopTime = 5;
+var head;
 
 (function ($) {
   
@@ -66,17 +67,15 @@ var stopTime = 5;
                 // Get duration and calculate number of segments
                 songDuration = event.jPlayer.status.duration;
                 segments = Math.ceil(songDuration/5);
-                
-                /* Using menu callback to send value
-                 * Send no. of segments to .module file through URL
-                $.get(
-                    // Callback URL
-                    "http://acquia-drupal-7-39-45-6271.dd:8083/jplayer/"+segments
-                );*/
-                
+                                            
                 // Set a cookie containing the number of segments
                 document.cookie = 'seginfo='+segments+'; path=/';
                 
+                // Get page number from Drupal.settings
+                head = parseInt(Drupal.settings.jplayer.pageinfo, 10);
+                head = head * 30;
+                stopTime = head + 5;
+                $(this).jPlayer("pause", head);
             },
             ended: function() {
                 stopTime = 0;
@@ -137,17 +136,15 @@ var stopTime = 5;
                 // Get duration and calculate number of segments
                 songDuration = event.jPlayer.status.duration;
                 segments = Math.ceil(songDuration/5);
-                
-                /* Using menu callback to send value
-                 * Send no. of segments to .module file through URL
-                $.get(
-                    // Callback URL
-                    "http://acquia-drupal-7-39-45-6271.dd:8083/jplayer/"+segments
-                );*/
-                
+                                
                 // Set a cookie containing the number of segments
                 document.cookie = 'seginfo='+segments+'; path=/';
                 
+                // Get page number from Drupal.settings
+                head = parseInt(Drupal.settings.jplayer.pageinfo, 10);
+                head = head * 30;
+                stopTime = head + 5;
+                $(this).jPlayer("pause", head);
             },
             ended: function() {
                 stopTime = 0;

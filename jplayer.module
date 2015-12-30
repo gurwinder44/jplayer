@@ -80,6 +80,12 @@ function jplayer_form($form, &$form_state)
     
     $form_state['step'] = $currStep;
     $allSteps = getForm();
+    
+    // Send page number
+     drupal_add_js(array('jplayer' => array(
+            'pageinfo' => $currStep
+        )), 'setting');
+     
     $currForm = $allSteps[$currStep];
     
     return $currForm;    
@@ -113,6 +119,7 @@ function getForm()
     $maxPages = ceil($segments/$maxSegments);
     
     for($i=1; $i<=$maxPages; $i++) {
+        
         $step[$i] = array();
         
         $step[$i]['page'] = array(
