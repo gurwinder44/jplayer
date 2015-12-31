@@ -71,7 +71,7 @@ var head;
                 // Set a cookie containing the number of segments
                 document.cookie = 'seginfo='+segments+'; path=/';
                 
-                // Get page number from Drupal.settings
+                // Get page number from Drupal.settings and set player position
                 head = parseInt(Drupal.settings.jplayer.pageinfo, 10);
                 head = head * 30;
                 stopTime = head + 5;
@@ -140,7 +140,7 @@ var head;
                 // Set a cookie containing the number of segments
                 document.cookie = 'seginfo='+segments+'; path=/';
                 
-                // Get page number from Drupal.settings
+                // Get page number from Drupal.settings and set player position
                 head = parseInt(Drupal.settings.jplayer.pageinfo, 10);
                 head = head * 30;
                 stopTime = head + 5;

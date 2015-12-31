@@ -21,6 +21,13 @@ function jplayer_menu() {
     'description' => 'Configure the settings for the jPlayer module.',
     'file' => 'includes/jplayer.admin.inc',
   );
+  
+  $items['transcript/submit'] = array(
+      'title' => t('All done!'),
+      'page callback' => 'submit_redirect',
+      'access callback' => TRUE,
+  );
+  
   return $items;
 }
 
@@ -40,8 +47,7 @@ function jplayer_help($path, $arg)
  * Implements hook_block_info().
  */
 function jplayer_block_info()
-{
-    
+{    
     $blocks['transcriptform'] = array(
         'info'  => t('Transciption form block'),
         'cache' => DRUPAL_CACHE_GLOBAL,
@@ -81,7 +87,7 @@ function jplayer_form($form, &$form_state)
     $form_state['step'] = $currStep;
     $allSteps = getForm();
     
-    // Send page number
+    // Set page number for javascript to access
      drupal_add_js(array('jplayer' => array(
             'pageinfo' => $currStep
         )), 'setting');
@@ -102,11 +108,11 @@ function getNumberOfSteps() {
  * Form builder function
  */
 function getForm()
-{
-    $cookie_name = 'seginfo';
+{    
     $form = array();
     
     // Get segments from cookie set by javascript file
+    $cookie_name = 'seginfo';
     if(isset($_COOKIE[$cookie_name])) {
         $segments = $_COOKIE[$cookie_name];
     }
@@ -184,9 +190,20 @@ function jplayer_form_submit($form, &$form_state)
             }
         $currStep++;
         }
-    // Store the values from $finalFormValues into database/file
-    drupal_set_message(t('Form submitted; your data will saved!'));
+        
+        // Store the values from $finalFormValues into database/file
+        
+        // Redirect to successful submission page
+        drupal_goto('transcript/submit');
     }
+}
+
+/**
+ * Function for new page upon submission
+ */
+function submit_redirect() {
+    drupal_set_message(t('Form submitted!'));
+    return t('Your data has been saved.');
 }
 
 /**
