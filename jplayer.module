@@ -61,8 +61,6 @@ function jplayer_block_info()
 function jplayer_block_view($delta = '')
 {
     $block = array();
-    global $seg;
-    $seg = 10;
     switch($delta) {
         case 'transcriptform':
             //$block['subject'] = t('Subject');
@@ -76,7 +74,7 @@ function jplayer_block_view($delta = '')
  * Master form function
  */
 function jplayer_form($form, &$form_state)
-{        
+{            
     if(isset($form_state['values'])) {
         $currStep = $form_state['step'] + 1;
     }
@@ -108,7 +106,7 @@ function getNumberOfSteps() {
  * Form builder function
  */
 function getForm()
-{    
+{   
     $form = array();
     
     // Get segments from cookie set by javascript file
@@ -173,26 +171,30 @@ function getForm()
  * Form submission
  */
 function jplayer_form_submit($form, &$form_state)
-{
-    $form_state['storedvalues'][$form_state['step']] = $form_state['values'];
+{   
+    $cookie_name = 'seginfo';
+    if(isset($_COOKIE[$cookie_name])) {
+        $segments = $_COOKIE[$cookie_name];
+    }
+    
+    // Write data of current page to database
+    for($i=1; $i<=6; $i++) {
+        $id = ($form_state['step']*6) + $i;
+        if($id > $segments) {
+            break;
+        }
+        db_insert('transcript')->fields(array(
+            'tid' => $id,
+            'text' => $form_state['values'][$i],
+            'audio_id' => 0,
+        ))->execute();
+    }    
+    
     if($form_state['step']+1 != getNumberofSteps()) {
-        $form_state['rebuild'] = TRUE;
-        
+        // Need to generate next page
+        $form_state['rebuild'] = TRUE;        
     }
     else {
-        $finalFormValues = array();
-        $currStep = 0;
-        foreach(getForm() as $step) {
-            foreach($step as $key => $value) {
-                if(strcmp($key,"submit") != 0) {
-                    $finalFormValues['key'] = $form_state['storedvalues'][$currStep];
-                }
-            }
-        $currStep++;
-        }
-        
-        // Store the values from $finalFormValues into database/file
-        
         // Redirect to successful submission page
         drupal_goto('transcript/submit');
     }
