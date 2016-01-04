@@ -27,7 +27,7 @@ function jplayer_schema() {
                 'type' => 'int',
                 'not null' => TRUE),            
         ),
-        'primary key' => array('tid', 'audio_id'),
+        'primary key' => array('tid'),
     );
     
     return $schema;

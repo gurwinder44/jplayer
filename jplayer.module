@@ -22,7 +22,7 @@ function jplayer_menu() {
     'file' => 'includes/jplayer.admin.inc',
   );
   
-  $items['transcript/submit'] = array(
+  $items['transcript/submitted'] = array(
       'title' => t('All done!'),
       'page callback' => 'submit_redirect',
       'access callback' => TRUE,
@@ -196,7 +196,7 @@ function jplayer_form_submit($form, &$form_state)
     }
     else {
         // Redirect to successful submission page
-        drupal_goto('transcript/submit');
+        drupal_goto('transcript/submitted');
     }
 }
 
@@ -205,7 +205,7 @@ function jplayer_form_submit($form, &$form_state)
  */
 function submit_redirect() {
     drupal_set_message(t('Form submitted!'));
-    return t('Your data has been saved.');
+    return t('');
 }
 
 /**
