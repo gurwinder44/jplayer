@@ -74,7 +74,7 @@ function jplayer_block_view($delta = '')
  * Master form function
  */
 function jplayer_form($form, &$form_state)
-{            
+{
     if(isset($form_state['values'])) {
         $currStep = $form_state['step'] + 1;
     }
@@ -176,8 +176,7 @@ function jplayer_form_submit($form, &$form_state)
     if(isset($_COOKIE[$cookie_name])) {
         $segments = $_COOKIE[$cookie_name];
     }
-    
-    // Write data of current page to database
+    /* Write data of current page to database
     for($i=1; $i<=6; $i++) {
         $id = ($form_state['step']*6) + $i;
         if($id > $segments) {
@@ -188,15 +187,42 @@ function jplayer_form_submit($form, &$form_state)
             'text' => $form_state['values'][$i],
             'audio_id' => 0,
         ))->execute();
-    }    
-    
+    }*/
     if($form_state['step']+1 != getNumberofSteps()) {
+        // Save values of current page
+        $form_state['storage'][$form_state['step']] = $form_state['values'];        
         // Need to generate next page
-        $form_state['rebuild'] = TRUE;        
+        $form_state['rebuild'] = TRUE;
     }
     else {
-        // Redirect to successful submission page
-        drupal_goto('transcript/submitted');
+        // Save the last page
+        $form_state['storage'][$form_state['step']] = $form_state['values'];
+        
+        // Prepare the data to write
+        $data = '';
+        for($i=0; $i<=$form_state['step']; $i++) {
+            for($j=1; $j<=6; $j++) {
+                $max = ($form_state['step']*6) + $j;
+                if($max > $segments) {
+                    break;
+                }
+                $data = $data . $form_state['storage'][$i][$j] . ' ';
+            }
+            $data = $data . "\r\n";
+        }
+        
+        // Write transcript data to file
+        $dest = 'public://transcripts/transcript.txt';
+        $uri = $dest;
+        $file_object = file_save_data($data, $uri, FILE_EXISTS_RENAME);
+        if(!empty($file_object)) {
+            drupal_set_message(t('Your data has been saved!'));
+            drupal_goto('transcript/submitted');
+        }
+        else {
+            drupal_set_message(t('Failed to save data.'), 'error');
+            drupal_goto('content/transcriber');
+        }
     }
 }
 
@@ -204,7 +230,6 @@ function jplayer_form_submit($form, &$form_state)
  * Function for new page upon submission
  */
 function submit_redirect() {
-    drupal_set_message(t('Form submitted!'));
     return t('');
 }
 

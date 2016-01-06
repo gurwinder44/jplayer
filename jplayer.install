@@ -6,7 +6,7 @@
 
 /**
  * Implements hook_schema().
- */
+ *
 function jplayer_schema() {
     
     // Create table to store transcript data
@@ -31,7 +31,7 @@ function jplayer_schema() {
     );
     
     return $schema;
-}
+}*/
 
 /**
  * Implements hook_requirements().

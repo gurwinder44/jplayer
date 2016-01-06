@@ -6,7 +6,7 @@
 
 /**
  * Implements hook_views_data().
- */
+ *
 function jplayer_views_data() {
     $data['transcript']['table']['group'] = t('Transcript');
     
@@ -63,7 +63,7 @@ function jplayer_views_data() {
     );
     
     return $data;
-}
+}*/
 
 /**
  * Implements hook_views_plugins().
