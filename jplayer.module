@@ -211,18 +211,18 @@ function jplayer_form_submit($form, &$form_state)
             $data = $data . "\r\n";
         }
         
-        $id = 0;
+        $id = REQUEST_TIME;
         // Write transcript data to file
         $dest = 'public://transcripts/transcript' . $id . '.txt';
         $uri = $dest;
         $file_object = file_save_data($data, $uri, FILE_EXISTS_RENAME);
         if(!empty($file_object)) {
-            drupal_set_message(t('Your data has been saved!'));
+            drupal_set_message(t('Your data has been saved! You can see it below.'));
             create_transcript_node($uri, $data);
             drupal_goto('transcript/submitted');
         }
         else {
-            drupal_set_message(t('Failed to save data.'), 'error');
+            drupal_set_message(t('Failed to save data. Please try again.'), 'error');
             drupal_goto('content/transcriber');
         }
     }
@@ -236,7 +236,7 @@ function submit_redirect() {
 }
 
 /**
- * Create a new node
+ * Create a new node for the transcript
  */
 function create_transcript_node($filepath, $data) {
     
@@ -246,7 +246,8 @@ function create_transcript_node($filepath, $data) {
     $node->language = LANGUAGE_NONE;
     node_object_prepare($node);
     
-    $node->title = 'New Transcript';
+    $id = REQUEST_TIME;
+    $node->title = $id;
     $node->status = 1;
     $node->promote = 0;
     $node->comment = 1;
