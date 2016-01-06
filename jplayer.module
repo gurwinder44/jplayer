@@ -218,7 +218,7 @@ function jplayer_form_submit($form, &$form_state)
         $file_object = file_save_data($data, $uri, FILE_EXISTS_RENAME);
         if(!empty($file_object)) {
             drupal_set_message(t('Your data has been saved!'));
-            create_transcript_node($uri);
+            create_transcript_node($uri, $data);
             drupal_goto('transcript/submitted');
         }
         else {
@@ -238,7 +238,7 @@ function submit_redirect() {
 /**
  * Create a new node
  */
-function create_transcript_node($filepath) {
+function create_transcript_node($filepath, $data) {
     
     // Basic node creation
     $node = new stdClass();
@@ -255,7 +255,7 @@ function create_transcript_node($filepath) {
     
     
     // Add body
-    $node->body[LANGUAGE_NONE][0]['value'] = 'Some random text';
+    $node->body[LANGUAGE_NONE][0]['value'] = $data;
     
     // Add entity reference to audio
     
@@ -269,6 +269,7 @@ function create_transcript_node($filepath) {
     $file->display = 1;
     $file = file_copy($file, 'public://');
     $node->field_transcript_download[LANGUAGE_NONE][0] = (array)$file;
+    
     node_save($node);
 }
 
