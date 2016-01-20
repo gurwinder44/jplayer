@@ -78,7 +78,7 @@ var head;
                 $(this).jPlayer("pause", head);
             },
             ended: function() {
-                stopTime = 0;
+                stopTime = 5;
             },
             swfPath: Drupal.settings.jPlayer.swfPath,
             cssSelectorAncestor: '#'+playerId+'_interface',
@@ -92,9 +92,14 @@ var head;
           // Pause after every 5 seconds
           $(player).bind($.jPlayer.event.timeupdate, function(event) {
               if(event.jPlayer.status.currentTime > stopTime) {
-                  $(this).jPlayer("pause");                  
+                  stopTime = stopTime - 5;
+                  $(this).jPlayer("pause", stopTime);                  
                   stopTime = stopTime + 5;
               }
+          });
+          
+          $(player).bind($.jPlayer.event.pause, function() {
+              
           });
          
         }
@@ -147,7 +152,7 @@ var head;
                 $(this).jPlayer("pause", head);
             },
             ended: function() {
-                stopTime = 0;
+                stopTime = 5;
             },
             swfPath: Drupal.settings.jPlayer.swfPath,
             cssSelectorAncestor: '#'+playerId+'_interface',
@@ -161,7 +166,8 @@ var head;
           // Pause after every 5 seconds
           $(player).bind($.jPlayer.event.timeupdate, function(event) {
               if(event.jPlayer.status.currentTime > stopTime) {
-                  $(this).jPlayer("pause");
+                  stopTime = stopTime - 5;
+                  $(this).jPlayer("pause", stopTime);
                   stopTime = stopTime + 5;
               }
           });
