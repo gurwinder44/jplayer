@@ -90,13 +90,20 @@ var head;
             muted: playerSettings.muted
           });
           
-          // Pause after every 5 seconds
+          /* Pause after every 5 seconds
           $(player).bind($.jPlayer.event.timeupdate, function(event) {
               if(event.jPlayer.status.currentTime > stopTime) {
                   if(flag == 0) {
                       stopTime = stopTime - 5;
                 }
                   $(this).jPlayer("pause", stopTime);                  
+                  stopTime = stopTime + 5;
+              }
+          });*/
+          
+          $(player).bind($.jPlayer.event.play, function(event) {
+              if(event.jPlayer.status.currentTime > stopTime) {
+                  $(this).jPlayer("pause");
                   stopTime = stopTime + 5;
               }
           });
@@ -166,24 +173,47 @@ var head;
             muted: playerSettings.muted
           });
           
+          $(player).bind($.jPlayer.event.play, function() {
+              var startTime;
+              if(flag == 1) {                  
+                  flag = 0;
+                  stopTime = stopTime + 5;
+              }
+              else if(flag == 2) {
+                  flag = 0;
+                  stopTime = stopTime - 5;
+              }
+              startTime = stopTime - 5;
+              $(this).jPlayer("play", startTime);
+          });
+          
+          $(player).bind($.jPlayer.event.pause, function() {
+              if(flag == 0) {
+                  stopTime = stopTime - 5;
+                  /*startTime = stopTime - 5;
+                  $(this).jPlayer("pause", startTime);*/
+              }
+          });
+          
           // Pause after every 5 seconds
           $(player).bind($.jPlayer.event.timeupdate, function(event) {
               if(event.jPlayer.status.currentTime > stopTime) {
-                  stopTime = stopTime - 5;
-                  $(this).jPlayer("pause", stopTime);
+                  //stopTime = stopTime - 5;                  
                   stopTime = stopTime + 5;
+                  $(this).jPlayer("pause");
               }
           });
+              
           
           // Next
           $(wrapper).find('.jp-next').click(function() {
             /*$(this).blur();
             Drupal.jPlayer.next(wrapper, player);
             return false;*/
-            var startTime;
+            /*var startTime;
             stopTime = stopTime + 5;
-            startTime = stopTime - 5;
-            $(this).jPlayer("play", startTime);
+            startTime = stopTime - 5;*/
+            flag = 1;
           });
           
           // Previous
@@ -191,10 +221,13 @@ var head;
             /*$(this).blur();
             Drupal.jPlayer.previous(wrapper, player);
             return false;*/
+              /*
             var startTime;            
             stopTime = stopTime - 5;
             startTime = stopTime - 5;
-            $(this).jPlayer("play", startTime);
+            $(this).jPlayer("pause", startTime);
+          */
+            flag = 2;
           });
         }
       });
@@ -231,10 +264,10 @@ var head;
     //$(wrapper).parent().attr('class', 'jp-'+kind);
     
     if (play == true) {
-      $(player).jPlayer('play');
+      $(player).jPlayer('play', 17);
     }
   };
-  
+  /*
   Drupal.jPlayer.next = function(wrapper, player) {
     var playerId = $(player).attr('id');
     var playerSettings = Drupal.settings.jplayerInstances[playerId];
@@ -253,7 +286,7 @@ var head;
     var index = (current - 1 >= 0) ? current - 1 : playerSettings.files.length - 1;
     
     Drupal.jPlayer.setFiles(wrapper, player, index, true);
-  }
+  }*/
   
 })(jQuery);
 
