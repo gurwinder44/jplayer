@@ -38,7 +38,7 @@ function jplayer_help($path, $arg)
 {
     switch($path) {
         case "admin/help#jplayer":
-        return '<p>' . t("Plays audio to be transcribed!") . '</p>';
+            return '<p>' . t("Plays audio to be transcribed!") . '</p>';
             break;
     }
 }
@@ -64,7 +64,8 @@ function jplayer_block_view($delta = '')
     switch($delta) {
         case 'transcriptform':
             //$block['subject'] = t('Subject');
-            $block['content'] = drupal_get_form('jplayer_form');
+            //$block['content'] = drupal_get_form('jplayer_form');
+            $block['content'] = create_webform_node();
             break;
     }
     return $block;
@@ -145,6 +146,7 @@ function getForm()
                 '#type' => 'textfield',
                 '#title' => t('Segment @number', array('@number' => $segNo)),
                 '#default_value' => NULL,
+                '#attributes' => array('placeholder' => t('Enter text here'))
             );    
         }
         
@@ -273,6 +275,122 @@ function create_transcript_node($filepath, $data) {
     $node->field_transcript_download[LANGUAGE_NONE][0] = (array)$file;
     
     node_save($node);
+}
+
+/**
+ * Create a new webform node
+ */
+function create_webform_node() {
+    
+    // Basic node creation
+    $node = new StdClass();
+    $node->type = 'webform';
+    node_object_prepare($node);
+    $node->title = 'Transcript Form';
+    $node->language = LANGUAGE_NONE;
+    $node->body[LANGUAGE_NONE][0]['value'] = '';
+    $node->body[LANGUAGE_NONE][0]['format'] = 'full_html';
+    $node->uid = 1;
+    $node->promote = 0;
+    $node->comment = 1;
+    
+    $cookie_name = 'seginfo';
+    if(isset($_COOKIE[$cookie_name])) {
+        $segments = $_COOKIE[$cookie_name];
+    }
+    else {
+        drupal_set_message(t('Try refreshing the page!'), 'warning');
+        $segments = 1;
+    }
+    
+    $maxSegments = 6;
+    $MAX_PAGES = ceil($segments/$maxSegments);
+    
+    $COMP_PER_PAGE = $maxSegments + 1;
+    
+    for($i=0; $i<$MAX_PAGES; $i++) {
+        for($j=0; $j<$COMP_PER_PAGE; $j++) {
+            $index = ($COMP_PER_PAGE*$i)+$j;
+            if($index%$COMP_PER_PAGE == 6) {
+                if($index == ($MAX_PAGES * $COMP_PER_PAGE)-1) {
+                    break;
+                }
+                
+                // Page break component
+                $components[$index] = array(
+                    'name' => 'Page ' . $i,
+                    'form_key' => 'page_' . $i,
+                    'type' => 'pagebreak',
+                    'weight' => $index,
+                    'pid' => 0,
+                    'value' => '',
+                    'extra' => array(
+                        'next_page_label' => 'Next',
+                        'prev_page_label' => 'Previous',
+                        'private' => 0,
+                    ),
+                    'page_num' => $i+1,
+                );
+            }
+            else {
+                // Textfield component
+                $index = 
+                $components[$index] = array(
+                    'name' => 'Segment ' . $index,
+                    'form_key' => 'segment_' . $index,
+                    'type' => 'textfield',
+                    'mandatory' => 1,
+                    'weight' => $index,
+                    'pid' => 0,
+                    'extra' => array(
+                        'title_display' => 'before',
+                        'private' => 0,
+                    ),
+                    'page_num' => $i+1,
+                );
+            }
+        }
+    }
+    
+    dpm($components);
+    
+    $emails = array(
+        array(
+            'email' => 'name@domain.com',
+            'subject' => 'default',
+            'from_name' => 'default',
+            'from_address'=> 'default',
+            'template' => 'default',
+            'excluded_components' => array(),
+        ),
+    );
+    
+    $node->webform = array(
+        'confirmation' => '',
+        'confirmation_format' => NULL,
+        'redirect_url' => '<confirmation>',
+        'status' => '1',
+        'block' => '0',
+        'teaser' => '0',
+        'allow_draft' => '0',
+        'auto_save' => '0',
+        'submit_notice' => '1',
+        'submit_text' => '',
+        'submit_limit' => '-1',
+        'submit_interval' => '-1',
+        'total_submit_limit' => '-1',
+        'total_submit_interval' => '-1',
+        'record_exists' => TRUE,
+        'roles' => array(
+            0 => '1',
+        ),
+        'emails' => $emails,
+        'components' => $components,
+    );
+    
+    // Save the node
+    node_save($node);
+    
 }
 
 /**
