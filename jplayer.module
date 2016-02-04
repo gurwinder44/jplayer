@@ -22,12 +22,6 @@ function jplayer_menu() {
     'file' => 'includes/jplayer.admin.inc',
   );
   
-  $items['transcript/submitted'] = array(
-      'title' => t('All done!'),
-      'page callback' => 'submit_redirect',
-      'access callback' => TRUE,
-  );
-  
   return $items;
 }
 
@@ -45,7 +39,7 @@ function jplayer_help($path, $arg)
 
 /**
  * Implements hook_block_info().
- */
+ *
 function jplayer_block_info()
 {    
     $blocks['transcriptform'] = array(
@@ -53,11 +47,11 @@ function jplayer_block_info()
         'cache' => DRUPAL_CACHE_GLOBAL,
     );
     return $blocks;
-}
+}*/
 
 /**
  * Implements hook_block_view().
- */
+ *
 function jplayer_block_view($delta = '')
 {
     $block = array();
@@ -65,10 +59,21 @@ function jplayer_block_view($delta = '')
         case 'transcriptform':
             //$block['subject'] = t('Subject');
             //$block['content'] = drupal_get_form('jplayer_form');
-            $block['content'] = create_webform_node();
+            $block['content'] = getForm();
             break;
     }
     return $block;
+}*/
+
+/**
+ * Implements hook_init().
+ */
+function jplayer_init() {
+    //$flag = &drupal_static(__FUNCTION__);
+    $flag = variable_get('first_time');
+    if(!isset($flag)) {
+        create_webform_node();
+    }
 }
 
 /**
@@ -85,7 +90,7 @@ function jplayer_form($form, &$form_state)
     }
     
     $form_state['step'] = $currStep;
-    $allSteps = getForm();
+    $allSteps = depgetForm();
     
     // Set page number for javascript to access
      drupal_add_js(array('jplayer' => array(
@@ -107,7 +112,7 @@ function getNumberOfSteps() {
 /**
  * Form builder function
  */
-function getForm()
+function depgetForm()
 {   
     $form = array();
     
@@ -309,17 +314,23 @@ function create_webform_node() {
     $COMP_PER_PAGE = $maxSegments + 1;
     
     for($i=0; $i<$MAX_PAGES; $i++) {
+        /* Set page number for javascript to access
+        drupal_add_js(array('jplayer' => array(
+            'pageinfo' => $i,
+        )), 'setting');*/
         for($j=0; $j<$COMP_PER_PAGE; $j++) {
             $index = ($COMP_PER_PAGE*$i)+$j;
             if($index%$COMP_PER_PAGE == 6) {
+                
                 if($index == ($MAX_PAGES * $COMP_PER_PAGE)-1) {
                     break;
                 }
                 
+                $number = $i+1;
                 // Page break component
                 $components[$index] = array(
-                    'name' => 'Page ' . $i,
-                    'form_key' => 'page_' . $i,
+                    'name' => 'Page ' . $number,
+                    'form_key' => 'page_' . $number,
                     'type' => 'pagebreak',
                     'weight' => $index,
                     'pid' => 0,
@@ -329,15 +340,15 @@ function create_webform_node() {
                         'prev_page_label' => 'Previous',
                         'private' => 0,
                     ),
-                    'page_num' => $i+1,
+                    'page_num' => $number,
                 );
             }
             else {
+                $number = $index + 1 - $i;
                 // Textfield component
-                $index = 
                 $components[$index] = array(
-                    'name' => 'Segment ' . $index,
-                    'form_key' => 'segment_' . $index,
+                    'name' => 'Segment ' . $number,
+                    'form_key' => 'segment_' . $number,
                     'type' => 'textfield',
                     'mandatory' => 1,
                     'weight' => $index,
@@ -351,8 +362,6 @@ function create_webform_node() {
             }
         }
     }
-    
-    dpm($components);
     
     $emails = array(
         array(
@@ -388,6 +397,7 @@ function create_webform_node() {
         'components' => $components,
     );
     
+    variable_set('first_time', 10);
     // Save the node
     node_save($node);
     

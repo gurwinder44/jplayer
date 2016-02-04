@@ -157,7 +157,7 @@ var head;
                 
                 // Get page number from Drupal.settings and set player position
                 head = parseInt(Drupal.settings.jplayer.pageinfo, 10);
-                head = head * 30;
+                head = (head+1) * 30;
                 stopTime = head + 5;
                 $(this).jPlayer("pause", head);
             },
