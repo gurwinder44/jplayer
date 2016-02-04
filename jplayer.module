@@ -22,6 +22,12 @@ function jplayer_menu() {
     'file' => 'includes/jplayer.admin.inc',
   );
   
+  $items['transcript/submitted'] = array(
+      'title' => t('All done!'),
+      'page callback' => 'submit_redirect',
+      'access callback' => TRUE,
+  );
+  
   return $items;
 }
 
@@ -69,9 +75,10 @@ function jplayer_block_view($delta = '')
  * Implements hook_init().
  */
 function jplayer_init() {
-    //$flag = &drupal_static(__FUNCTION__);
+    // Check if the persistent variable 'first_time' has been set
     $flag = variable_get('first_time');
     if(!isset($flag)) {
+        // It's the first time, create a webform
         create_webform_node();
     }
 }
@@ -240,7 +247,8 @@ function jplayer_form_submit($form, &$form_state)
  * Function for new page upon submission
  */
 function submit_redirect() {
-    return t('');
+    drupal_set_message(t('Your data has been saved'));
+    return t('The transcript will be emailed to you.');
 }
 
 /**
@@ -299,6 +307,7 @@ function create_webform_node() {
     $node->promote = 0;
     $node->comment = 1;
     
+    // Get number of segments from the javascript file
     $cookie_name = 'seginfo';
     if(isset($_COOKIE[$cookie_name])) {
         $segments = $_COOKIE[$cookie_name];
@@ -313,21 +322,25 @@ function create_webform_node() {
     
     $COMP_PER_PAGE = $maxSegments + 1;
     
+    // Create webform components: textfields and page breaks
     for($i=0; $i<$MAX_PAGES; $i++) {
         /* Set page number for javascript to access
         drupal_add_js(array('jplayer' => array(
             'pageinfo' => $i,
         )), 'setting');*/
         for($j=0; $j<$COMP_PER_PAGE; $j++) {
+            
             $index = ($COMP_PER_PAGE*$i)+$j;
+            
             if($index%$COMP_PER_PAGE == 6) {
                 
+                // Check if the required number of segments are created
                 if($index == ($MAX_PAGES * $COMP_PER_PAGE)-1) {
                     break;
                 }
                 
-                $number = $i+1;
                 // Page break component
+                $number = $i+1;                
                 $components[$index] = array(
                     'name' => 'Page ' . $number,
                     'form_key' => 'page_' . $number,
@@ -344,8 +357,8 @@ function create_webform_node() {
                 );
             }
             else {
-                $number = $index + 1 - $i;
                 // Textfield component
+                $number = $index + 1 - $i;                
                 $components[$index] = array(
                     'name' => 'Segment ' . $number,
                     'form_key' => 'segment_' . $number,
@@ -363,9 +376,10 @@ function create_webform_node() {
         }
     }
     
+    // Where to email it to?
     $emails = array(
         array(
-            'email' => 'name@domain.com',
+            'email' => 'gurwinder@asu.edu',
             'subject' => 'default',
             'from_name' => 'default',
             'from_address'=> 'default',
@@ -376,12 +390,12 @@ function create_webform_node() {
     
     $node->webform = array(
         'confirmation' => '',
-        'confirmation_format' => NULL,
-        'redirect_url' => '<confirmation>',
+        'confirmation_format' => 'filtered_html',
+        'redirect_url' => 'transcript/submitted',
         'status' => '1',
         'block' => '0',
         'teaser' => '0',
-        'allow_draft' => '0',
+        'allow_draft' => '1',
         'auto_save' => '0',
         'submit_notice' => '1',
         'submit_text' => '',
@@ -397,7 +411,9 @@ function create_webform_node() {
         'components' => $components,
     );
     
+    // Set the 'first_time' variable so that this webform is not created again
     variable_set('first_time', 10);
+    
     // Save the node
     node_save($node);
     

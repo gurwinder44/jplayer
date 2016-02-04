@@ -60,6 +60,7 @@ function jplayer_requirements($phase) {
  */
 function jplayer_uninstall() {
   variable_del('jplayer_access_time');
+  variable_del('first_time');
 }
 
 /**
