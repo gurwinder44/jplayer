@@ -195,7 +195,7 @@ var segment = 1;
               }
               startTime = stopTime - 5;
               $(this).jPlayer("play", startTime);
-              document.getElementById("jp-segment").innerHTML = "Segment "+segment;
+              document.getElementById("jp-segment").innerHTML = "Now playing: SEGMENT "+segment;
           });
           
           $(player).bind($.jPlayer.event.pause, function() {
