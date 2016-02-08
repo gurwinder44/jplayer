@@ -71,6 +71,12 @@ div.jp-interface ul.jp-controls a {
 	overflow:hidden;
 	text-indent:-9999px;
 }
+#jp-segment {
+        width:100px;
+        height:20px;
+        font-size:small;        
+        text-indent:5px;
+}
 a.jp-play,
 a.jp-pause {
 	width:40px;

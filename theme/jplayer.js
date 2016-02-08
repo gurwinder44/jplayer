@@ -8,6 +8,7 @@ var songDuration;
 var segments;
 var stopTime = 5;
 var head;
+var segment = 1;
 
 (function ($) {
   
@@ -72,14 +73,17 @@ var head;
                 // Set a cookie containing the number of segments
                 document.cookie = 'seginfo='+segments+'; path=/';
                 
-                // Get page number from Drupal.settings and set player position
+                /* Get page number from Drupal.settings and set player position
                 head = parseInt(Drupal.settings.jplayer.pageinfo, 10);
                 head = head * 30;
                 stopTime = head + 5;
-                $(this).jPlayer("pause", head);
+                $(this).jPlayer("pause", head);*/
+                
+                document.getElementById("jp-segment").innerHTML = "Text";
             },
             ended: function() {
                 stopTime = 5;
+                segment = 1;
             },
             swfPath: Drupal.settings.jPlayer.swfPath,
             cssSelectorAncestor: '#'+playerId+'_interface',
@@ -155,14 +159,16 @@ var head;
                 // Set a cookie containing the number of segments
                 document.cookie = 'seginfo='+segments+'; path=/';
                 
-                // Get page number from Drupal.settings and set player position
+                /* Get page number from Drupal.settings and set player position
                 head = parseInt(Drupal.settings.jplayer.pageinfo, 10);
                 head = (head+1) * 30;
                 stopTime = head + 5;
-                $(this).jPlayer("pause", head);
+                $(this).jPlayer("pause", head);*/
+                
             },
             ended: function() {
                 stopTime = 5;
+                segment = 1;
             },
             swfPath: Drupal.settings.jPlayer.swfPath,
             cssSelectorAncestor: '#'+playerId+'_interface',
@@ -178,13 +184,16 @@ var head;
               if(flag == 1) {                  
                   flag = 0;
                   stopTime = stopTime + 5;
+                  segment++;
               }
               else if(flag == 2) {
                   flag = 0;
                   stopTime = stopTime - 5;
+                  segment--;
               }
               startTime = stopTime - 5;
               $(this).jPlayer("play", startTime);
+              document.getElementById("jp-segment").innerHTML = "Segment "+segment;
           });
           
           $(player).bind($.jPlayer.event.pause, function() {
