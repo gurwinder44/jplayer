@@ -223,6 +223,7 @@ var segment = 1;
             stopTime = stopTime + 5;
             startTime = stopTime - 5;*/
             flag = 1;
+            return false;
           });
           
           // Previous
@@ -237,6 +238,7 @@ var segment = 1;
             $(this).jPlayer("pause", startTime);
           */
             flag = 2;
+            return false;
           });
         }
       });
