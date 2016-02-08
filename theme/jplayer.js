@@ -73,11 +73,12 @@ var segment = 1;
                 // Set a cookie containing the number of segments
                 document.cookie = 'seginfo='+segments+'; path=/';
                 
-                /* Get page number from Drupal.settings and set player position
+                // Get page number from Drupal.settings and set player position
                 head = parseInt(Drupal.settings.jplayer.pageinfo, 10);
-                head = head * 30;
+                segment = ((head-1)*6) + 1;
+                head = (head-1) * 30;
                 stopTime = head + 5;
-                $(this).jPlayer("pause", head);*/
+                $(this).jPlayer("pause", head);
                 
                 document.getElementById("jp-segment").innerHTML = "Text";
             },
@@ -159,11 +160,12 @@ var segment = 1;
                 // Set a cookie containing the number of segments
                 document.cookie = 'seginfo='+segments+'; path=/';
                 
-                /* Get page number from Drupal.settings and set player position
-                head = parseInt(Drupal.settings.jplayer.pageinfo, 10);
-                head = (head+1) * 30;
+                // Get page number from Drupal.settings and set player position
+                head = parseInt(Drupal.settings.jplayer.pageinfo, 10);                
+                segment = ((head-1)*6) + 1;
+                head = (head-1) * 30;
                 stopTime = head + 5;
-                $(this).jPlayer("pause", head);*/
+                $(this).jPlayer("pause", head);
                 
             },
             ended: function() {
