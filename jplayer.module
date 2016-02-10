@@ -76,10 +76,11 @@ function jplayer_block_view($delta = '')
  */
 function jplayer_init() {
     // Check if the persistent variable 'first_time' has been set
-    $flag = variable_get('first_time');
-    if(!isset($flag)) {
-        // It's the first time, create a webform
-        create_webform_node();
+    if(request_path() == 'content/transcriber-player') {
+        $flag = variable_get('first_time');
+        if(!isset($flag)) {
+            create_webform_node();
+        }
     }
 }
 
@@ -97,7 +98,7 @@ function jplayer_form($form, &$form_state)
     }
     
     $form_state['step'] = $currStep;
-    $allSteps = depgetForm();
+    $allSteps = getForm();
     
     // Set page number for javascript to access
      drupal_add_js(array('jplayer' => array(
@@ -119,7 +120,7 @@ function getNumberOfSteps() {
 /**
  * Form builder function
  */
-function depgetForm()
+function getForm()
 {   
     $form = array();
     
@@ -184,7 +185,7 @@ function depgetForm()
 
 /**
  * Form submission
- */
+ *
 function jplayer_form_submit($form, &$form_state)
 {   
     $cookie_name = 'seginfo';
@@ -202,7 +203,7 @@ function jplayer_form_submit($form, &$form_state)
             'text' => $form_state['values'][$i],
             'audio_id' => 0,
         ))->execute();
-    }*/
+    }*
     if($form_state['step']+1 != getNumberofSteps()) {
         // Save values of current page
         $form_state['storage'][$form_state['step']] = $form_state['values'];        
@@ -241,14 +242,165 @@ function jplayer_form_submit($form, &$form_state)
             drupal_goto('content/transcriber');
         }
     }
-}
+}*/
 
 /**
  * Function for new page upon submission
  */
 function submit_redirect() {
-    drupal_set_message(t('Your data has been saved'));
-    return t('The transcript will be emailed to you.');
+    
+    // Get the ID of the last complete submission
+    $result = db_query("SELECT MAX(sid) FROM webform_submissions WHERE is_draft = :val", array(':val' => 0));
+    $sid = $result->fetchField(0);
+    
+    // Get the data of the last submission and save into an array
+    $result = db_query("SELECT data FROM webform_submitted_data WHERE sid = :sid", array(':sid' => $sid));
+    $raw_data = array();
+    $segment = 0;
+    foreach($result as $record) {
+        $raw_data[$segment++] = $record->data;
+    }
+    
+    // Format the data
+    $txt_data = format_data_txt($raw_data);
+    $xml_data = format_data_xml($raw_data, date('m/d/y H:i:s'));
+    
+    // Write transcript data to file
+    $dest = 'public://transcripts/transcript' . $sid . '.xml';
+    $file_object = file_save_data($xml_data, $dest, FILE_EXISTS_RENAME);
+    if(!empty($file_object)) {
+        create_transcript_node($dest, $xml_data);
+        //variable_del('first_time');
+        drupal_set_message(t('Your data has been saved'));
+        return t('Your transcript will be emailed to you');
+    }
+    else {
+        //variable_del('first_time');
+        drupal_set_message(t('Failed to save data'), 'error');        
+        return t('Please try again.');
+    }
+}
+
+/**
+ * Format the transcript to a timestamped text file
+ */
+function format_data_txt($raw_data) {
+    
+    $data = array();
+    for($segment=0; $segment<count($raw_data); $segment++) {
+        // Calculate the timestamp
+        $seconds = $segment * 5;
+        $hours = sprintf('%02d', floor($seconds / 3600));
+        $mins = sprintf('%02d', floor(($seconds - ($hours*3600)) / 60));
+        $secs = sprintf('%02d', floor($seconds % 60));
+        $timestamp = $hours . ':' . $mins . ':' . $secs;
+                
+        // Concatenate the timestamp with the data
+        $data[$segment] = $timestamp . ' ' . $raw_data[$segment];
+    }
+    $formatted_string = $data[0];
+    for($segment=1; $segment<count($data); $segment++) {
+        $formatted_string = $formatted_string . "\r\n" . $data[$segment];
+    }
+    return $formatted_string;    
+}
+
+/**
+ * Format the data into a TEI compliant XML file
+ */
+function format_data_xml($raw_data, $submit_time) {
+    
+    // Get username
+    global $user;    
+    $author = $user->name;
+    $author_email = $user->mail;
+    
+    // Get number of segments from the javascript file
+    $cookie_name = 'seginfo';
+    if(isset($_COOKIE[$cookie_name])) {
+        $duration = $_COOKIE[$cookie_name];
+    }
+    $segments = ceil($duration/5);
+    
+    $hours = sprintf('%02d', floor($duration / 3600));
+    $mins = sprintf('%02d', floor(($duration - ($hours*3600)) / 60));
+    $secs = sprintf('%02d', floor($duration % 60));
+    $timestamp = $hours . ':' . $mins . ':' . $secs;
+    
+    $distributor = "SocialScribe";
+    
+    // Get node ID
+    $result = db_query('SELECT * FROM node WHERE type = :transcriber', array(':transcriber' => 'transcriber'));
+    $nid = $result->fetchField(0);
+    
+    // Load the node and get the file name
+    $node = node_load($nid);
+    $audio_file = $node->field_audio['und'][0]['filename'];
+    
+    $audio_path = "Local";
+    
+    // XML File
+    $formatted_string = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"
+            . "<TEI>\r\n"
+            . "\t<teiHeader>\r\n"
+            . "\t\t<fileDesc>\r\n"
+            . "\t\t\t<titleStmt>\r\n"
+            . "\t\t\t\t<title>" . $audio_file . " Transcription</title>\r\n"
+            . "\t\t\t\t<author>" . $author . "</author>\r\n"
+            . "\t\t\t\t<respStmt>\r\n"
+            . "\t\t\t\t\t<resp>Transcription of audio into text</resp>\r\n"
+            . "\t\t\t\t</respStmt>\r\n"
+            . "\t\t\t</titleStmt>\r\n"
+            . "\t\t\t<extent>" . $timestamp . "</extent>\r\n"
+            . "\t\t\t<publicationStmt>\r\n"
+            . "\t\t\t\t<distributor>" . $distributor . "</distributor>\r\n"
+            . "\t\t\t\t<availability><p>Available for educational and research purposes.</p></availability>\r\n"
+            . "\t\t\t</publicationStmt>\r\n"
+            . "\t\t\t<sourceDesc>\r\n"
+            . "\t\t\t\t<recordingStmt>\r\n"
+            . "\t\t\t\t\t<recording type=\"audio\" corresp=\"" . $audio_path . "\"/>\r\n"
+            . "\t\t\t\t</recordingStmt>\r\n"
+            . "\t\t\t</sourceDesc>\r\n"
+            . "\t\t</fileDesc>\r\n"
+            . "\t\t<encodingDesc>\r\n"
+            . "\t\t\t<editorialDecl>\r\n"
+            . "\t\t\t\t<normalization>\r\n"
+            . "\t\t\t\t\t<p>The words on the recording should be written down in normal spelling using \"dictionary spelling.\" Transcribers should not attempt to use special spellings to represent pronunciation. The test is whether the spelling can be found in a standard dictionary. Some words may not be in a standard dictionary; transcribers should just do the best they can on those, and mark them with ?.</p>\r\n"
+            . "\t\t\t\t</normalization>\r\n"
+            . "\t\t\t\t<interpretation>\r\n"
+            . "\t\t\t\t\t<p>Transcribers should not try to force the words into grammatical sentences, but instead should write down what people actually say, even if it appears to be ungrammatical (this is quite normal in conversation). Transcribers should mark \"sentence units\" (word groups thought by the transcriber to hold together in some way) with a capital letter at the beginning, and a period and one space at the end. Other use of caps and periods should be limited, and periods should not be followed by spaces unless at the end of a sentence unit. Proper names should be capitalized, but no caps or periods should be used with titles like mr or mrs or dr, and other abbreviations should be avoided as much as possible. Use ? to mark questions. Do not use : or ; and use the comma as little as possible (only when the interpretation of the utterance would otherwise be unclear to the user).</p>\r\n"
+            . "\t\t\t\t</interpretation>\r\n"
+            . "\t\t\t</editorialDecl>\r\n"
+            . "\t\t<encodingDesc>\r\n"
+            . "\t\t<revisionDesc>\r\n"
+            . "\t\t\t<change who=\"" . $author . "\"  contact=\"" . $author_email . "\" when=\"" . $submit_time . "\"> Transcribed interview audio.</change>\r\n"
+            . "\t\t</revisionDesc>\r\n"
+            . "\t</teiHeader>\r\n"
+            . "\t<text>\r\n"
+            . "\t\t<body>\r\n"
+            . "\t\t\t<timeline origin=\"#TS-p1\" unit=\"s\">\r\n"
+            . "\t\t\t\t<when xml:id=\"TS-p1\" absolute=\"00:00:00\"/>\r\n";
+    
+    for($i=2; $i<=$segments+1; $i++) {
+        $formatted_string .= "\t\t\t\t<when xml:id=\"TS-p" . $i . "\" interval=\"5.0\" since=\"TS-p" . ($i-1) . "\"/>\r\n";
+    }
+    
+    $formatted_string = $formatted_string . "\t\t\t</timeline>\r\n"
+            . "\t\t\t<div type=\"audio file\" n=\"FILE_ORDER\">\r\n";
+    
+    for($i=0; $i<$segments; $i++) {
+        $formatted_string = $formatted_string. "\t\t\t\t<seg xml:id=\"TS-u" . ($i+1) . "\" start=\"#TS-p" . ($i+1) . "\" end=\"#TS-p" . ($i+2) . "\">\r\n"
+                . "\t\t\t\t\t<u>\r\n\t\t\t\t\t" . $raw_data[$i] . "\r\n\t\t\t\t\t</u>\r\n"
+                . "\t\t\t\t</seg>\r\n";
+    }
+    
+    $formatted_string = $formatted_string . "\t\t\t</div>\r\n"
+            . "\t\t</body>\r\n"
+            . "\t</text>\r\n"
+            . "</TEI>\r\n";
+    
+    return $formatted_string;
+    
 }
 
 /**
@@ -268,7 +420,7 @@ function create_transcript_node($filepath, $data) {
     $node->promote = 0;
     $node->comment = 1;
     
-    $node->path = array('alias' => 'transcript/submitted');
+    //$node->path = array('alias' => 'transcript/submitted');
     
     
     // Add body
@@ -310,13 +462,13 @@ function create_webform_node() {
     // Get number of segments from the javascript file
     $cookie_name = 'seginfo';
     if(isset($_COOKIE[$cookie_name])) {
-        $segments = $_COOKIE[$cookie_name];
+        $duration = $_COOKIE[$cookie_name];
+        $segments = ceil($duration/5);
     }
     else {
         drupal_set_message(t('Try refreshing the page!'), 'warning');
         $segments = 1;
     }
-    
     $maxSegments = 6;
     $MAX_PAGES = ceil($segments/$maxSegments);
     
@@ -331,14 +483,17 @@ function create_webform_node() {
         for($j=0; $j<$COMP_PER_PAGE; $j++) {
             
             $index = ($COMP_PER_PAGE*$i)+$j;
+            // Check if the required number of segments are created
+            if($index > ($segments+$MAX_PAGES-1)) {
+                break;
+            }
             
             if($index%$COMP_PER_PAGE == 6) {
-                
                 // Check if the required number of segments are created
                 if($index == ($MAX_PAGES * $COMP_PER_PAGE)-1) {
                     break;
                 }
-                
+                            
                 // Page break component
                 $number = $i+1;                
                 $components[$index] = array(
@@ -355,8 +510,10 @@ function create_webform_node() {
                     ),
                     'page_num' => $number,
                 );
+                
             }
-            else {
+            else {               
+                
                 // Textfield component
                 $number = $index + 1 - $i;                
                 $components[$index] = array(
@@ -373,6 +530,7 @@ function create_webform_node() {
                     'page_num' => $i+1,
                 );
             }
+            
         }
     }
     

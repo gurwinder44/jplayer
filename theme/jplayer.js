@@ -71,7 +71,7 @@ var segment = 1;
                 segments = Math.ceil(songDuration/5);
                                             
                 // Set a cookie containing the number of segments
-                document.cookie = 'seginfo='+segments+'; path=/';
+                document.cookie = 'seginfo='+songDuration+'; path=/';
                 
                 // Get page number from Drupal.settings and set player position
                 head = parseInt(Drupal.settings.jplayer.pageinfo, 10);
@@ -158,7 +158,7 @@ var segment = 1;
                 segments = Math.ceil(songDuration/5);
                                 
                 // Set a cookie containing the number of segments
-                document.cookie = 'seginfo='+segments+'; path=/';
+                document.cookie = 'seginfo='+songDuration+'; path=/';
                 
                 // Get page number from Drupal.settings and set player position
                 head = parseInt(Drupal.settings.jplayer.pageinfo, 10);                
@@ -255,6 +255,7 @@ var segment = 1;
     $(wrapper).find('.jp-playlist-current').removeClass('jp-playlist-current');
     $('#'+playerId+'_item_'+index).parent().addClass('jp-playlist-current');
     $('#'+playerId+'_item_'+index).addClass('jp-playlist-current');
+                
     $(player).jPlayer("setMedia", playerSettings.files[index])
     
     for (key in playerSettings.files[index]) {
@@ -277,7 +278,7 @@ var segment = 1;
     //$(wrapper).parent().attr('class', 'jp-'+kind);
     
     if (play == true) {
-      $(player).jPlayer('play', 17);
+      $(player).jPlayer('play');
     }
   };
   /*
