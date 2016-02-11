@@ -18,7 +18,18 @@
         <li><a href="#" class="jp-stop" tabindex="1">stop</a></li>
         <li><a href="#" class="jp-mute" tabindex="1">mute</a></li>
         <li><a href="#" class="jp-unmute" tabindex="1">unmute</a></li>
+        
+<!---------------------------------------------------------------------------
+ -------------------------------CUSTOM STUFF---------------------------------
+ ---------------------------------------------------------------------------->
+        
+        <!--Create a new element to display which segment is being played-->
         <li><a href="#" id="jp-segment" tabindex="1"></a></li>
+        
+<!---------------------------------------------------------------------------
+ ----------------------------END OF CUSTOM STUFF-----------------------------
+ ---------------------------------------------------------------------------->
+        
         <?php if ($mode == 'playlist'): ?>
         <li><a href="#" class="jp-previous" tabindex="1">previous</a></li>
         <li><a href="#" class="jp-next" tabindex="1">next</a></li>

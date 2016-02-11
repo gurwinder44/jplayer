@@ -66,21 +66,20 @@ var segment = 1;
               }
             },
             loadeddata: function(event) {
-                // Get duration and calculate number of segments
-                songDuration = event.jPlayer.status.duration;
-                segments = Math.ceil(songDuration/5);
+                    // Get duration and calculate number of segments
+                    songDuration = event.jPlayer.status.duration;
+                    segments = Math.ceil(songDuration/5);
                                             
-                // Set a cookie containing the number of segments
-                document.cookie = 'seginfo='+songDuration+'; path=/';
+                    // Set a cookie containing the number of segments
+                    document.cookie = 'seginfo='+songDuration+'; path=/';
                 
-                // Get page number from Drupal.settings and set player position
-                head = parseInt(Drupal.settings.jplayer.pageinfo, 10);
-                segment = ((head-1)*6) + 1;
-                head = (head-1) * 30;
-                stopTime = head + 5;
-                $(this).jPlayer("pause", head);
+                    // Get page number from Drupal.settings and set player position
+                    head = parseInt(Drupal.settings.jplayer.pageinfo, 10);
+                    segment = ((head-1)*6) + 1;
+                    head = (head-1) * 30;
+                    stopTime = head + 5;
+                    $(this).jPlayer("pause", head);
                 
-                document.getElementById("jp-segment").innerHTML = "Text";
             },
             ended: function() {
                 stopTime = 5;
@@ -105,17 +104,13 @@ var segment = 1;
                   stopTime = stopTime + 5;
               }
           });*/
+                $(player).bind($.jPlayer.event.play, function(event) {
+                    if(event.jPlayer.status.currentTime > stopTime) {
+                        $(this).jPlayer("pause");
+                        stopTime = stopTime + 5;
+                    }
+                });
           
-          $(player).bind($.jPlayer.event.play, function(event) {
-              if(event.jPlayer.status.currentTime > stopTime) {
-                  $(this).jPlayer("pause");
-                  stopTime = stopTime + 5;
-              }
-          });
-          
-          $(player).bind($.jPlayer.event.pause, function() {
-              
-          });
          
         }
         else {
@@ -153,19 +148,20 @@ var segment = 1;
               
             },
             loadeddata: function(event) {
-                // Get duration and calculate number of segments
-                songDuration = event.jPlayer.status.duration;
-                segments = Math.ceil(songDuration/5);
-                                
-                // Set a cookie containing the number of segments
-                document.cookie = 'seginfo='+songDuration+'; path=/';
                 
-                // Get page number from Drupal.settings and set player position
-                head = parseInt(Drupal.settings.jplayer.pageinfo, 10);                
-                segment = ((head-1)*6) + 1;
-                head = (head-1) * 30;
-                stopTime = head + 5;
-                $(this).jPlayer("pause", head);
+                    // Get duration and calculate number of segments
+                    songDuration = event.jPlayer.status.duration;
+                    segments = Math.ceil(songDuration/5);
+                                
+                    // Set a cookie containing the number of segments
+                    document.cookie = 'seginfo='+songDuration+'; path=/';
+                
+                    // Get page number from Drupal.settings and set player position
+                    head = parseInt(Drupal.settings.jplayer.pageinfo, 10);                
+                    segment = ((head-1)*6) + 1;
+                    head = (head-1) * 30;
+                    stopTime = head + 5;
+                    $(this).jPlayer("pause", head);
                 
             },
             ended: function() {
@@ -181,29 +177,32 @@ var segment = 1;
             muted: playerSettings.muted
           });
           
-          $(player).bind($.jPlayer.event.play, function() {
-              var startTime;
-              if(flag == 1) {                  
-                  flag = 0;
-                  stopTime = stopTime + 5;
-                  segment++;
-              }
-              else if(flag == 2) {
-                  flag = 0;
-                  stopTime = stopTime - 5;
-                  segment--;
-              }
-              startTime = stopTime - 5;
-              $(this).jPlayer("play", startTime);
-              document.getElementById("jp-segment").innerHTML = "Now playing: SEGMENT "+segment;
-          });
+          
+            $(player).bind($.jPlayer.event.play, function() {
+                var startTime;
+                if(flag == 1) {                  
+                    flag = 0;
+                    stopTime = stopTime + 5;
+                    segment++;
+                }
+                else if(flag == 2) {
+                    flag = 0;
+                    stopTime = stopTime - 5;
+                    segment--;
+                }
+                startTime = stopTime - 5;
+                $(this).jPlayer("play", startTime);
+                document.getElementById("jp-segment").innerHTML = "Now playing: SEGMENT "+segment;
+            
+            });
+          
           
           $(player).bind($.jPlayer.event.pause, function() {
               if(flag == 0) {
                   stopTime = stopTime - 5;
                   /*startTime = stopTime - 5;
                   $(this).jPlayer("pause", startTime);*/
-              }
+              }          
           });
           
           // Pause after every 5 seconds
@@ -212,9 +211,9 @@ var segment = 1;
                   //stopTime = stopTime - 5;                  
                   stopTime = stopTime + 5;
                   $(this).jPlayer("pause");
-              }
+              }          
           });
-              
+          }
           
           // Next
           $(wrapper).find('.jp-next').click(function() {
@@ -242,7 +241,8 @@ var segment = 1;
             flag = 2;
             return false;
           });
-        }
+      
+        
       });
     }
   };
