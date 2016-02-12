@@ -9,6 +9,7 @@ var segments;
 var stopTime = 5;
 var head;
 var segment = 1;
+var action = 1;
 
 (function ($) {
   
@@ -114,6 +115,8 @@ var segment = 1;
          
         }
         else {
+            action = parseInt(Drupal.settings.jplayer.action, 10);
+            if(action == 0) {
           // Initialise playlist player
           $(player).jPlayer({
             ready: function() {
@@ -157,7 +160,8 @@ var segment = 1;
                     document.cookie = 'seginfo='+songDuration+'; path=/';
                 
                     // Get page number from Drupal.settings and set player position
-                    head = parseInt(Drupal.settings.jplayer.pageinfo, 10);                
+                    head = parseInt(Drupal.settings.jplayer.pageinfo, 10);
+                    if(isNaN(head)) {head = 1;}
                     segment = ((head-1)*6) + 1;
                     head = (head-1) * 30;
                     stopTime = head + 5;
@@ -213,6 +217,52 @@ var segment = 1;
                   $(this).jPlayer("pause");
               }          
           });
+            }
+            
+            else {
+                 // Initialise playlist player
+          $(player).jPlayer({
+            ready: function() {
+              Drupal.jPlayer.setFiles(wrapper, player, 0, playerSettings.autoplay);
+              
+              // Pause other players on play
+              $(player).bind($.jPlayer.event.play, function() {
+                $(this).jPlayer("pauseOthers");
+              });
+
+              // Add playlist selection
+              $('#'+playerId+'_playlist').find('a').click(function(){
+                var index = $(this).attr('id').split('_')[2];
+                Drupal.jPlayer.setFiles(wrapper, player, index, true);
+                $(this).blur();
+                return false;
+              });
+
+              Drupal.attachBehaviors(wrapper);
+
+              // Repeat?
+              if (playerSettings.repeat != 'none') {
+                $(player).bind($.jPlayer.event.ended, function() {
+                  if (playerSettings.repeat == 'single') {
+                    $(this).jPlayer("play");
+                  }
+                  else {
+                    Drupal.jPlayer.next(wrapper, player);
+                  }
+                });
+              }
+              
+            },
+            swfPath: Drupal.settings.jPlayer.swfPath,
+            cssSelectorAncestor: '#'+playerId+'_interface',
+            solution: playerSettings.solution,
+            supplied: playerSettings.supplied,
+            preload: playerSettings.preload,
+            volume: playerSettings.volume,
+            muted: playerSettings.muted
+          });
+            }
+            
           }
           
           // Next

@@ -127,19 +127,19 @@ function annotate_uctrl_callback($form, &$form_state) {
 
 /**
  * Implements hook_init().
- *
+ */
 function jplayer_init() {
-    
+    $action = 1;
     if(request_path() == 'content/transcriber') {
-        $action = 1;        
+        $action = 0;        
     }
     if(request_path() == 'content/player') {
-        $action = 0;
+        $action = 1;
     }
     drupal_add_js(array('jplayer' => array(
             'action' => $action,
     )), 'setting');
-}*/
+}
 
 /**
  * 
