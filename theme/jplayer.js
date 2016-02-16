@@ -10,6 +10,7 @@ var stopTime = 5;
 var head;
 var segment = 1;
 var action = 1;
+var atime;
 
 (function ($) {
   
@@ -253,6 +254,14 @@ var action = 1;
               }
               
             },
+             loadeddata: function(event) {
+                 
+                 // Save the time when it was paused so we can come back to it
+                 var timeval = sessionStorage.getItem("timepoint");
+                 atime = Math.floor(timeval);                 
+                 $(this).jPlayer("pause", atime);
+                
+            },
             swfPath: Drupal.settings.jPlayer.swfPath,
             cssSelectorAncestor: '#'+playerId+'_interface',
             solution: playerSettings.solution,
@@ -261,6 +270,13 @@ var action = 1;
             volume: playerSettings.volume,
             muted: playerSettings.muted
           });
+          
+          // Save the time when player was paused
+          $(player).bind($.jPlayer.event.pause, function(event) {
+              document.cookie = 'timeinfo='+event.jPlayer.status.currentTime+'; path=/';
+              sessionStorage.setItem("timepoint", event.jPlayer.status.currentTime);
+          });
+          
             }
             
           }
