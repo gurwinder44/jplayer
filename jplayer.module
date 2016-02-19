@@ -156,7 +156,7 @@ function jplayer_help($path, $arg)
 function jplayer_block_info()
 {    
     $blocks['options'] = array(
-        'info' => t('Options for transcriber'),
+        'info' => t('Options'),
         'cache' => DRUPAL_CACHE_GLOBAL,
     );
     /* For modal windows, for annotation
