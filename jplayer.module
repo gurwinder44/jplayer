@@ -156,7 +156,7 @@ function jplayer_help($path, $arg)
 function jplayer_block_info()
 {    
     $blocks['options'] = array(
-        'info' => t('Options'),
+        'info' => t('Options for transcriber'),
         'cache' => DRUPAL_CACHE_GLOBAL,
     );
     /* For modal windows, for annotation
@@ -289,17 +289,8 @@ function create_player_node($content) {
     $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
     $nid = $result->fetchField(0);
     $temp_node = node_load($nid);
-    $audio_file = $temp_node->field_audio['und'][0]['filename'];
-    
-    
-    $file = new StdClass();
-    $file->uid = 1;
-    $file->uri = 'public://' . $audio_file;
-    $file->filemime = file_get_mimetype($file->uri);
-    $file->status = 1;
-    $file->display = 1;
-    $file = file_copy($file, 'public://');
-    $node->field_audio[LANGUAGE_NONE][0] = (array)$file;
+    $audio_url = $temp_node->field_audio['und'][0];
+    $node->field_audio[LANGUAGE_NONE][0] = $audio_url;
     node_save($node);
 }
 
@@ -825,7 +816,7 @@ function format_data_xml($raw_data, $submit_time) {
     $node = node_load($nid);
     $audio_file = $node->field_audio['und'][0]['filename'];
     
-    $audio_path = "Local";
+    $audio_path = $node->field_audio['und'][0]['uri'];
     
     // XML File
     $formatted_string = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"
