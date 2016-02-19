@@ -252,7 +252,7 @@ function annotate_handler($form, &$form_state) {
 /**
  * Implements hook_init().
  */
-function jplayer_init() {
+function jplayer_init() {    
     $action = 1;
     if(request_path() == 'content/transcriber') {
         $action = 0;        
@@ -446,6 +446,13 @@ function create_transcript_webform_node() {
  */
 function create_annotation_webform_node() {
     
+    // Get controlled taxonomy terms
+    $string = '';
+    $ctrl_term = taxonomy_get_tree(2, 0 , NULL, FALSE);
+    foreach($ctrl_term as $term) {
+        $string = $string . $term->name . '|' . $term->name . "\r\n";
+    }
+    
     // Basic node creation
     $node = new StdClass();
     $node->type = 'webform';
@@ -526,9 +533,7 @@ uctrl|Uncontrolled',
             'type' => 'select',
             'value' => '',
             'extra' => array (
-                'items' => 'label_1|Label 1
-label_2|Label 2
-label_3|Label 3',
+                'items' => $string,
                 'multiple' => 1,
                 'title_display' => 'before',
                 'description_above' => 0,
@@ -742,9 +747,10 @@ function submit_redirect_annotation() {
     }
     else {
         $data = $raw_data[1];
+        create_taxonomy_term($data);
     }
     
-    create_annotation_node($timestamp, $data);
+    // Add term reference to audio
     
     // Get node ID and delete the annotator player
     $result1 = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Annotator'));
@@ -756,8 +762,29 @@ function submit_redirect_annotation() {
     $nid2 = $result2->fetchField(0);
     node_delete($nid2);        
         
-    drupal_set_message(t('Your data has been saved'));
+    drupal_set_message(t('The annotation has been added!'));
     drupal_goto('content/player');
+}
+
+/**
+ * Function to create a taxonomy term
+ */
+function create_taxonomy_term($uctrl_term) {
+    // Check if the term already exists in the controlled vocab
+    $ctrl_vid = 2;
+    $uctrl_vid = 3;
+    $ctrl_term = taxonomy_get_tree($ctrl_vid, 0, NULL, FALSE);
+    foreach($ctrl_term as $term) {
+        if($uctrl_term == $term->name) {
+            drupal_set_message(t('The term already exists in the controlled vocabulary and will not be created.'), 'warning');
+            return FALSE;
+        }
+    }
+    $term = new StdClass();
+    $term->name = $uctrl_term;
+    $term->vid = $uctrl_vid; // For uncontrolled vocab    
+    taxonomy_term_save($term);
+    drupal_set_message(t('The term has been created!'));        
 }
 
 /**
@@ -926,7 +953,7 @@ function create_transcript_node($filepath, $data, $txt_data) {
 
 /**
  * Create a new node for the transcript
- */
+ *
 function create_annotation_node($timestamp, $data) {
     
     // Basic node creation
@@ -951,7 +978,7 @@ function create_annotation_node($timestamp, $data) {
     // Add entity reference to audio
     
     node_save($node);
-}
+}*/
 
 /****************************************************************************
  *****************************END OF CUSTOM STUFF****************************
