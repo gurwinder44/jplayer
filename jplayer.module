@@ -252,7 +252,7 @@ function annotate_handler($form, &$form_state) {
 /**
  * Implements hook_init().
  */
-function jplayer_init() {    
+function jplayer_init() {
     $action = 1;
     if(request_path() == 'content/transcriber') {
         $action = 0;        
@@ -289,7 +289,7 @@ function create_player_node($content) {
     $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
     $nid = $result->fetchField(0);
     $temp_node = node_load($nid);
-    $audio_url = $temp_node->field_audio['und'][0];
+    $audio_url = $temp_node->field_audio[$temp_node->language][0];
     $node->field_audio[LANGUAGE_NONE][0] = $audio_url;
     node_save($node);
 }
@@ -534,7 +534,7 @@ uctrl|Uncontrolled',
             'value' => '',
             'extra' => array (
                 'items' => $string,
-                'multiple' => 1,
+                'multiple' => 0,
                 'title_display' => 'before',
                 'description_above' => 0,
                 'private' => 0,
@@ -725,10 +725,21 @@ function submit_redirect_annotation() {
     else {
         $timepoint = 0;
     }
+    
+    // Format the times tamp to HH:MM:SS
     $hours = sprintf('%02d', floor($timepoint / 3600));
     $mins = sprintf('%02d', floor(($timepoint - ($hours*3600)) / 60));
     $secs = sprintf('%02d', floor($timepoint % 60));
     $timestamp = $hours . ':' . $mins . ':' . $secs;
+    
+     // Load the audio player and get the corresponding audio file node
+    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
+    $nid = $result->fetchField(0);
+    $temp_node = node_load($nid);
+    $title = $temp_node->field_audio[$temp_node->language][0]['filename'];    
+    $filename = str_replace('%20', ' ', $title);
+    $result = db_query("SELECT * FROM druq_node WHERE type = :type AND title = :filename", array('type' => 'audio_file', ':filename' => $filename));
+    $aid = $result->fetchField(0);
     
     // Get the ID of the last complete submission
     $result = db_query("SELECT MAX(sid) FROM druq_webform_submissions", array(':val' => 0));
@@ -742,15 +753,35 @@ function submit_redirect_annotation() {
         $raw_data[$i++] = $record->data;
     }
     
+    // Create the taxonomy term and get term ID
     if($raw_data[0] == 'ctrl') {
         $data = $raw_data[2];
+        $tid = get_tid($data, 'annotation_categories_controlled_');
+        $type = 'controlled';
     }
     else {
         $data = $raw_data[1];
-        create_taxonomy_term($data);
+        $exists = create_taxonomy_term($data);
+        if($exists == 0) {
+            $tid = get_tid($data, 'annotation_categories_uncontrolled_');
+            $type = 'uncontrolled';
+        }
+        else {
+            $tid = get_tid($data, 'annotation_categories_controlled_');
+            $type = 'controlled';
+        }
     }
     
-    // Add term reference to audio
+    // Check if the annotation already exists; create one if not
+    $node_name = $filename . ' Annotation @ ' . $timestamp;
+    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'annotation', ':title' => $node_name));
+    $anode = $result->fetchField(0);
+    if($anode == NULL) {
+        create_annotation_node($aid, $tid, $type, $timestamp);
+    }
+    else {
+        modify_annotation_node($anode, $tid, $type);
+    }
     
     // Get node ID and delete the annotator player
     $result1 = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Annotator'));
@@ -769,22 +800,50 @@ function submit_redirect_annotation() {
 /**
  * Function to create a taxonomy term
  */
-function create_taxonomy_term($uctrl_term) {
+function create_taxonomy_term($new_term) {
     // Check if the term already exists in the controlled vocab
     $ctrl_vid = 2;
     $uctrl_vid = 3;
     $ctrl_term = taxonomy_get_tree($ctrl_vid, 0, NULL, FALSE);
     foreach($ctrl_term as $term) {
-        if($uctrl_term == $term->name) {
+        if($new_term == $term->name) {
             drupal_set_message(t('The term already exists in the controlled vocabulary and will not be created.'), 'warning');
-            return FALSE;
+            return 1;
+        }
+    }
+    $uctrl_term = taxonomy_get_tree($uctrl_vid, 0, NULL, FALSE);
+    foreach($uctrl_term as $term) {
+        if($new_term == $term->name) {
+            drupal_set_message(t('The term already exists in the uncontrolled vocabulary and will not be created.'), 'warning');
+            return 0;
         }
     }
     $term = new StdClass();
-    $term->name = $uctrl_term;
+    $term->name = $new_term;
     $term->vid = $uctrl_vid; // For uncontrolled vocab    
     taxonomy_term_save($term);
-    drupal_set_message(t('The term has been created!'));        
+    drupal_set_message(t('The term has been created!'));
+    return 0;
+}
+
+/**
+ * Function to get tid from term name
+ */
+function get_tid($term_name, $vocabulary) {
+    $arr_terms = taxonomy_get_term_by_name($term_name, $vocabulary);
+    if (!empty($arr_terms)) {
+        $arr_terms = array_values($arr_terms);
+        $tid = $arr_terms[0]->tid;
+    }
+    /*else {
+        $vobj = taxonomy_vocabulary_machine_name_load($vocabulary);
+        $term = new stdClass();
+        $term->name = $term_name;
+        $term->vid = $vobj->vid;
+        taxonomy_term_save($term);
+        $tid = $term->tid;
+    }*/
+    return $tid;
 }
 
 /**
@@ -841,9 +900,10 @@ function format_data_xml($raw_data, $submit_time) {
     
     // Load the node and get the file name
     $node = node_load($nid);
-    $audio_file = $node->field_audio['und'][0]['filename'];
+    $audio_file_raw = $node->field_audio[$node->language][0]['filename'];
+    $audio_file = str_replace('%20', ' ', $audio_file_raw);
     
-    $audio_path = $node->field_audio['und'][0]['uri'];
+    $audio_path = $node->field_audio[$node->language][0]['uri'];
     
     // XML File
     $formatted_string = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"
@@ -923,7 +983,7 @@ function create_transcript_node($filepath, $data, $txt_data) {
     $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
     $nid = $result->fetchField(0);
     $temp_node = node_load($nid);
-    $node->title = $temp_node->field_audio['und'][0]['filename'] . ' Transcript';
+    $node->title = $temp_node->field_audio[$temp_node->language][0]['filename'] . ' Transcript';
     
     $node->status = 1;
     $node->promote = 0;
@@ -953,32 +1013,54 @@ function create_transcript_node($filepath, $data, $txt_data) {
 
 /**
  * Create a new node for the transcript
- *
-function create_annotation_node($timestamp, $data) {
-    
+ */
+function create_annotation_node($aid, $tid, $type, $timestamp) {
     // Basic node creation
     $node = new stdClass();
     $node->type = 'annotation';
     $node->language = LANGUAGE_NONE;
     node_object_prepare($node);
     
-    // Get file name
-    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
-    $nid = $result->fetchField(0);
-    $temp_node = node_load($nid);
-    $node->title = $temp_node->field_audio['und'][0]['filename'] . ' Annotation ' . $timestamp;
+    $temp_node = node_load($aid);
+    $title = $temp_node->field_remote_file_url[$temp_node->language][0]['filename'];
+    $title = str_replace('%20', ' ', $title);
+    $node->title = $title . ' Annotation @ ' . $timestamp;
     
     $node->status = 1;
     $node->promote = 0;
     $node->comment = 1;    
     
-    // Add body
-    $node->body[LANGUAGE_NONE][0]['value'] = $timestamp . ' ' .$data;
-    
     // Add entity reference to audio
+    $node->field_annotation_audio_file[$node->language][0]['target_id'] = $aid;
+    
+    // Add annotations
+    if($type == 'controlled') {
+        $node->field_controlled_annotations[$node->language][]['tid'] = $tid;
+    }
+    else {
+        $node->field_uncontrolled_annotations[$node->language][]['tid'] = $tid;
+    }
+    
+    // Add timestamp
+    $node->field_timestamp[$node->language][0]['value'] = $timestamp;
     
     node_save($node);
-}*/
+}
+
+/**
+ * Function to add terms to existing annotation nodes
+ */
+function modify_annotation_node($anode, $tid, $type) {
+    $node = node_load($anode);
+    // Add annotations
+    if($type == 'controlled') {
+        $node->field_controlled_annotations[$node->language][]['tid'] = $tid;
+    }
+    else {
+        $node->field_uncontrolled_annotations[$node->language][]['tid'] = $tid;
+    }
+    node_save($node);
+}
 
 /****************************************************************************
  *****************************END OF CUSTOM STUFF****************************

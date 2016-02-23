@@ -84,8 +84,8 @@ var atime;
                 
             },
             ended: function() {
-                stopTime = 5;
-                segment = 1;
+                /*stopTime = 5;
+                segment = 1;*/
             },
             swfPath: Drupal.settings.jPlayer.swfPath,
             cssSelectorAncestor: '#'+playerId+'_interface',
@@ -170,8 +170,8 @@ var atime;
                 
             },
             ended: function() {
-                stopTime = 5;
-                segment = 1;
+                /*stopTime = 5;
+                segment = 1;*/
             },
             swfPath: Drupal.settings.jPlayer.swfPath,
             cssSelectorAncestor: '#'+playerId+'_interface',
@@ -255,6 +255,13 @@ var atime;
               
             },
              loadeddata: function(event) {
+                 
+                 // Get duration and calculate number of segments
+                 songDuration = event.jPlayer.status.duration;
+                 segments = Math.ceil(songDuration/5);
+                                
+                 // Set a cookie containing the number of segments
+                 document.cookie = 'seginfo='+songDuration+'; path=/';
                  
                  // Save the time when it was paused so we can come back to it
                  var timeval = sessionStorage.getItem("timepoint");
