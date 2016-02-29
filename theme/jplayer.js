@@ -84,6 +84,7 @@ var atime;
                 
             },
             ended: function() {
+                $(this).jPlayer("playHead", 100);
                 /*stopTime = 5;
                 segment = 1;*/
             },
@@ -117,6 +118,7 @@ var atime;
         }
         else {
             action = parseInt(Drupal.settings.jplayer.action, 10);
+            // Transcriber
             if(action == 0) {
           // Initialise playlist player
           $(player).jPlayer({
@@ -170,6 +172,7 @@ var atime;
                 
             },
             ended: function() {
+                $(this).jPlayer("playHead", 100);
                 /*stopTime = 5;
                 segment = 1;*/
             },
@@ -183,12 +186,19 @@ var atime;
           });
           
           
-            $(player).bind($.jPlayer.event.play, function() {
+            $(player).bind($.jPlayer.event.play, function(event) {
                 var startTime;
+                var duration = event.jPlayer.status.duration
                 if(flag == 1) {                  
                     flag = 0;
-                    stopTime = stopTime + 5;
-                    segment++;
+                    if(stopTime > duration) {
+                        stopTime = 5;
+                        segment = 1;
+                    }
+                    else {
+                        stopTime = stopTime + 5;
+                        segment++;
+                    }
                 }
                 else if(flag == 2) {
                     flag = 0;
