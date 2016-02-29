@@ -286,7 +286,7 @@ function create_player_node($content) {
     $node->path = array('alias' => $alias);
     
     // Get node ID
-    $result = db_query('SELECT * FROM node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
+    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
     $nid = $result->fetchField(0);
     $temp_node = node_load($nid);
     $audio_url = $temp_node->field_audio[$temp_node->language][0];
@@ -662,11 +662,11 @@ uctrl|Uncontrolled',
 function submit_redirect_transcript() {
     
     // Get the ID of the last complete submission
-    $result = db_query("SELECT MAX(sid) FROM webform_submissions WHERE is_draft = :val", array(':val' => 0));
+    $result = db_query("SELECT MAX(sid) FROM druq_webform_submissions WHERE is_draft = :val", array(':val' => 0));
     $sid = $result->fetchField(0);
     
     // Get the data of the last submission and save into an array
-    $result = db_query("SELECT data FROM webform_submitted_data WHERE sid = :sid", array(':sid' => $sid));
+    $result = db_query("SELECT data FROM druq_webform_submitted_data WHERE sid = :sid", array(':sid' => $sid));
     $raw_data = array();
     $segment = 0;
     foreach($result as $record) {
@@ -684,12 +684,12 @@ function submit_redirect_transcript() {
         create_transcript_node($dest, $xml_data, $txt_data);
         
         // Get node ID and delete the transcriber player
-        $result1 = db_query('SELECT * FROM node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Transcriber'));
+        $result1 = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Transcriber'));
         $nid1 = $result1->fetchField(0);
         node_delete($nid1);
         
         // Get node ID and delete the webform
-        $result2 = db_query('SELECT * FROM node WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => 'Transcript Form'));
+        $result2 = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => 'Transcript Form'));
         $nid2 = $result2->fetchField(0);
         node_delete($nid2);        
         
@@ -698,12 +698,12 @@ function submit_redirect_transcript() {
     }
     else {
         // Get node ID and delete the transcriber player
-        $result1 = db_query('SELECT * FROM node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Transcriber'));
+        $result1 = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Transcriber'));
         $nid1 = $result1->fetchField(0);
         node_delete($nid1);
         
         // Get node ID and delete the transcript webform
-        $result2 = db_query('SELECT * FROM node WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => 'Transcript Form'));
+        $result2 = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => 'Transcript Form'));
         $nid2 = $result2->fetchField(0);
         node_delete($nid2);
         
@@ -716,7 +716,6 @@ function submit_redirect_transcript() {
  * Steps to take after the annotation webform is submitted
  */
 function submit_redirect_annotation() {
-    
     
     // Get timestamp from the javascript file
     $cookie_name = 'timeinfo';
@@ -734,20 +733,20 @@ function submit_redirect_annotation() {
     $timestamp = $hours . ':' . $mins . ':' . $secs;
     
      // Load the audio player and get the corresponding audio file node
-    $result = db_query('SELECT * FROM node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
+    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
     $nid = $result->fetchField(0);
     $temp_node = node_load($nid);
     $title = $temp_node->field_audio[$temp_node->language][0]['filename'];    
     $filename = str_replace('%20', ' ', $title);
-    $result = db_query("SELECT * FROM node WHERE type = :type AND title = :filename", array('type' => 'audio_file', ':filename' => $filename));
+    $result = db_query("SELECT * FROM druq_node WHERE type = :type AND title = :filename", array('type' => 'audio_file', ':filename' => $filename));
     $aid = $result->fetchField(0);
     
     // Get the ID of the last complete submission
-    $result = db_query("SELECT MAX(sid) FROM webform_submissions", array(':val' => 0));
+    $result = db_query("SELECT MAX(sid) FROM druq_webform_submissions", array(':val' => 0));
     $sid = $result->fetchField(0);
     
     // Get the data of the last submission and save into an array
-    $result = db_query("SELECT data FROM webform_submitted_data WHERE sid = :sid", array(':sid' => $sid));
+    $result = db_query("SELECT data FROM druq_webform_submitted_data WHERE sid = :sid", array(':sid' => $sid));
     $raw_data = array();
     $i = 0;
     foreach($result as $record) {
@@ -775,7 +774,7 @@ function submit_redirect_annotation() {
     
     // Check if the annotation already exists; create one if not
     $node_name = $filename . ' Annotation @ ' . $timestamp;
-    $result = db_query('SELECT * FROM node WHERE type = :type AND title = :title', array(':type' => 'annotation', ':title' => $node_name));
+    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'annotation', ':title' => $node_name));
     $anode = $result->fetchField(0);
     if($anode == NULL) {
         create_annotation_node($aid, $tid, $type, $timestamp);
@@ -785,12 +784,12 @@ function submit_redirect_annotation() {
     }
     
     // Get node ID and delete the annotator player
-    $result1 = db_query('SELECT * FROM node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Annotator'));
+    $result1 = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Annotator'));
     $nid1 = $result1->fetchField(0);
     node_delete($nid1);
         
     // Get node ID and delete the annotation webform
-    $result2 = db_query('SELECT * FROM node WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => 'Annotation Form'));
+    $result2 = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => 'Annotation Form'));
     $nid2 = $result2->fetchField(0);
     node_delete($nid2);        
         
@@ -896,7 +895,7 @@ function format_data_xml($raw_data, $submit_time) {
     $distributor = "SocialScribe";
     
     // Get node ID
-    $result = db_query('SELECT * FROM node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
+    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
     $nid = $result->fetchField(0);
     
     // Load the node and get the file name
@@ -981,7 +980,7 @@ function create_transcript_node($filepath, $data, $txt_data) {
     node_object_prepare($node);
     
     // Get file name
-    $result = db_query('SELECT * FROM node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
+    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
     $nid = $result->fetchField(0);
     $temp_node = node_load($nid);
     $node->title = $temp_node->field_audio[$temp_node->language][0]['filename'] . ' Transcript';
