@@ -185,9 +185,9 @@ var atime;
           
             $(player).bind($.jPlayer.event.play, function(event) {
                 var startTime;
-                var duration = event.jPlayer.status.duration;
-                flag = 0;
+                var duration = event.jPlayer.status.duration;                
                 if(flag == 1) {
+                    flag = 0;
                     if(stopTime > duration) {
                         stopTime = 5;
                         segment = 1;
@@ -199,7 +199,7 @@ var atime;
                 }
                 else if(flag == 2) {
                     flag = 0;
-                    if(stoptime < 5) {
+                    if(stopTime < 5) {
                         stopTime = 5;
                         segment = 1;
                     }

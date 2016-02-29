@@ -673,15 +673,24 @@ function submit_redirect_transcript() {
         $raw_data[$segment++] = $record->data;
     }
     
+    // Load the audio player and get the corresponding audio file node
+    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
+    $nid = $result->fetchField(0);
+    $temp_node = node_load($nid);
+    $title = $temp_node->field_audio[$temp_node->language][0]['filename'];    
+    $filename = str_replace('%20', ' ', $title);
+    $result = db_query("SELECT * FROM druq_node WHERE type = :type AND title = :filename", array('type' => 'audio_file', ':filename' => $filename));
+    $aid = $result->fetchField(0);
+    
     // Format the data
     $txt_data = format_data_txt($raw_data);
     $xml_data = format_data_xml($raw_data, date('m/d/y H:i:s'));
     
     // Write transcript data to file
-    $dest = 'public://transcripts/transcription' . $sid . '.xml';
+    $dest = 'public://transcripts/transcript' . $sid . '.xml';
     $file_object = file_save_data($xml_data, $dest, FILE_EXISTS_RENAME);
     if(!empty($file_object)) {
-        create_transcript_node($dest, $xml_data, $txt_data);
+        create_transcript_node($aid, $dest, $xml_data, $txt_data);
         
         // Get node ID and delete the transcriber player
         $result1 = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Transcriber'));
@@ -971,7 +980,7 @@ function format_data_xml($raw_data, $submit_time) {
 /**
  * Create a new node for the transcript
  */
-function create_transcript_node($filepath, $data, $txt_data) {
+function create_transcript_node($aid, $filepath, $data, $txt_data) {
     
     // Basic node creation
     $node = new stdClass();
@@ -983,7 +992,9 @@ function create_transcript_node($filepath, $data, $txt_data) {
     $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
     $nid = $result->fetchField(0);
     $temp_node = node_load($nid);
-    $node->title = $temp_node->field_audio[$temp_node->language][0]['filename'] . ' Transcript';
+    $title = $temp_node->field_audio[$temp_node->language][0]['filename'];
+    $filename = str_replace('%20', ' ', $title);
+    $node->title = $filename . ' Transcript';
     
     $node->status = 1;
     $node->promote = 0;
@@ -996,7 +1007,7 @@ function create_transcript_node($filepath, $data, $txt_data) {
     $node->body[LANGUAGE_NONE][0]['value'] = $txt_data;
     
     // Add entity reference to audio
-    
+    $node->field_audio_file[$node->language][0]['target_id'] = $aid;
             
     // Add file
     $file = new stdClass();
