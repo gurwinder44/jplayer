@@ -117,6 +117,7 @@ var atime;
         }
         else {
             action = parseInt(Drupal.settings.jplayer.action, 10);
+            // Transcriber
             if(action == 0) {
           // Initialise playlist player
           $(player).jPlayer({
@@ -170,8 +171,7 @@ var atime;
                 
             },
             ended: function() {
-                /*stopTime = 5;
-                segment = 1;*/
+                $(this).jPlayer("playHead", 100);
             },
             swfPath: Drupal.settings.jPlayer.swfPath,
             cssSelectorAncestor: '#'+playerId+'_interface',
@@ -183,17 +183,30 @@ var atime;
           });
           
           
-            $(player).bind($.jPlayer.event.play, function() {
+            $(player).bind($.jPlayer.event.play, function(event) {
                 var startTime;
-                if(flag == 1) {                  
-                    flag = 0;
-                    stopTime = stopTime + 5;
-                    segment++;
+                var duration = event.jPlayer.status.duration;
+                flag = 0;
+                if(flag == 1) {
+                    if(stopTime > duration) {
+                        stopTime = 5;
+                        segment = 1;
+                    }
+                    else {
+                        stopTime = stopTime + 5;
+                        segment++;
+                    }
                 }
                 else if(flag == 2) {
                     flag = 0;
-                    stopTime = stopTime - 5;
-                    segment--;
+                    if(stoptime < 5) {
+                        stopTime = 5;
+                        segment = 1;
+                    }
+                    else {
+                        stopTime = stopTime - 5;
+                        segment--;
+                    }
                 }
                 startTime = stopTime - 5;
                 $(this).jPlayer("play", startTime);
