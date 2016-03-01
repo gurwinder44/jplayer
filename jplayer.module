@@ -901,18 +901,26 @@ function format_data_xml($raw_data, $submit_time) {
     $secs = sprintf('%02d', floor($duration % 60));
     $timestamp = $hours . ':' . $mins . ':' . $secs;
     
-    $distributor = "SocialScribe";
-    
     // Get node ID
     $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
     $nid = $result->fetchField(0);
     
-    // Load the node and get the file name
+    // Load the player node and get the file name + URL
     $node = node_load($nid);
     $audio_file_raw = $node->field_audio[$node->language][0]['filename'];
     $audio_file = str_replace('%20', ' ', $audio_file_raw);
-    
     $audio_path = $node->field_audio[$node->language][0]['uri'];
+    
+    // Load the audio file and get file order
+    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_file', ':title' => $audio_file));
+    $audio_nid = $result->fetchField(0);
+    $audio_file_node = node_load($audio_nid);
+    $file_order = $audio_file_node->field_interview_file_order[$audio_file_node->language][0]['value'];
+    
+    // Get collection (distributor?)
+    $collection_nid = $audio_file_node->field_collection[$audio_file_node->language][0]['target_id'];
+    $collection_node = node_load($collection_nid);
+    $distributor = $collection_node->title;
     
     // XML File
     $formatted_string = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"
@@ -961,7 +969,7 @@ function format_data_xml($raw_data, $submit_time) {
     }
     
     $formatted_string = $formatted_string . "\t\t\t</timeline>\r\n"
-            . "\t\t\t<div type=\"audio file\" n=\"FILE_ORDER\">\r\n";
+            . "\t\t\t<div type=\"audio file\" n=\"" . $file_order . "\">\r\n";
     
     for($i=0; $i<$segments; $i++) {
         $formatted_string = $formatted_string. "\t\t\t\t<seg xml:id=\"TS-u" . ($i+1) . "\" start=\"#TS-p" . ($i+1) . "\" end=\"#TS-p" . ($i+2) . "\">\r\n"
