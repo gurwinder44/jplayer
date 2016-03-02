@@ -253,6 +253,13 @@ function annotate_handler($form, &$form_state) {
  * Implements hook_init().
  */
 function jplayer_init() {
+    
+    // Pause the player when user clicks ANNOTATE button
+    drupal_add_js('jQuery(document).ready(function() {
+        jQuery("#edit-annotate").click(function() {
+            jQuery("*").jPlayer("pause");
+        });
+    });', 'inline');    // Using the * selector for now, but would be better if somehow the specific jplayer object ID could be obtained
     $action = 1;
     if(request_path() == 'content/transcriber') {
         $action = 0;        

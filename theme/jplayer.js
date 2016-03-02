@@ -167,7 +167,9 @@ var atime;
                     segment = ((head-1)*6) + 1;
                     head = (head-1) * 30;
                     stopTime = head + 5;
+                    
                     $(this).jPlayer("pause", head);
+                    
                 
             },
             ended: function() {
@@ -234,6 +236,7 @@ var atime;
             }
             
             else {
+                // Normal player or annotator
                  // Initialise playlist player
           $(player).jPlayer({
             ready: function() {
@@ -280,7 +283,6 @@ var atime;
                  var timeval = sessionStorage.getItem("timepoint");
                  atime = Math.floor(timeval);                 
                  $(this).jPlayer("pause", atime);
-                
             },
             swfPath: Drupal.settings.jPlayer.swfPath,
             cssSelectorAncestor: '#'+playerId+'_interface',
