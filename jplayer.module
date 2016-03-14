@@ -231,15 +231,57 @@ function getOptionsForm() {
  */
 function transcribe_handler($form, &$form_state) {
     
+    // Get node ID
+    $result = db_query('SELECT * FROM drqd_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
+    $nid = $result->fetchField(0);
+    
+    // Get the audio file URL
+    $player_node = node_load($nid);
+    $audio_url = $player_node->field_audio[$player_node->language][0]['uri'];
+    
+    // Get the audio file corresponding to the audio URL
+    $result = db_query('SELECT * FROM drqd_node WHERE type = :type', array(':type' => 'audio_file'));
+    foreach($result as $record) {
+        $nid = $record->nid;
+        $file_node = node_load($nid);
+        if($file_node->field_remote_file_url[$file_node->language][0]['uri'] == $audio_url) {
+            break;
+        }
+    }
+        
+    // Get file name
+    $file_name = $file_node->title;
+    
     // Create new audio_player node with an associated webform
     create_player_node('Transcriber');    
-    create_transcript_webform_node();
+    create_transcript_webform_node($file_name);
     
     // Redirect to the transcriber
     drupal_goto('content/transcriber');
 }
 
 function annotate_handler($form, &$form_state) {
+    
+    // Get node ID
+    $result = db_query('SELECT * FROM drqd_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
+    $nid = $result->fetchField(0);
+    
+    // Get the audio file URL
+    $player_node = node_load($nid);
+    $audio_url = $player_node->field_audio[$player_node->language][0]['uri'];
+    
+    // Get the audio file corresponding to the audio URL
+    $result = db_query('SELECT * FROM drqd_node WHERE type = :type', array(':type' => 'audio_file'));
+    foreach($result as $record) {
+        $nid = $record->nid;
+        $file_node = node_load($nid);
+        if($file_node->field_remote_file_url[$file_node->language][0]['uri'] == $audio_url) {
+            break;
+        }
+    }
+        
+    // Get file name
+    $file_name = $file_node->title;
     
     // Create new audio_player node with an associated webform
     create_player_node('Annotator');
@@ -293,7 +335,7 @@ function create_player_node($content) {
     $node->path = array('alias' => $alias);
     
     // Get node ID
-    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
+    $result = db_query('SELECT * FROM drqd_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
     $nid = $result->fetchField(0);
     $temp_node = node_load($nid);
     $audio_url = $temp_node->field_audio[$temp_node->language][0];
@@ -304,13 +346,13 @@ function create_player_node($content) {
 /**
  * Create a new webform node for transcript
  */
-function create_transcript_webform_node() {
+function create_transcript_webform_node($file_name) {
     
     // Basic node creation
     $node = new StdClass();
     $node->type = 'webform';
     node_object_prepare($node);
-    $node->title = 'Transcript Form';
+    $node->title = $file_name . ' Transcript Form';
     $node->language = LANGUAGE_NONE;
     $node->body[LANGUAGE_NONE][0]['value'] = '';
     $node->body[LANGUAGE_NONE][0]['format'] = 'full_html';
@@ -668,60 +710,77 @@ uctrl|Uncontrolled',
  */
 function submit_redirect_transcript() {
     
+    // Load the audio player and get the corresponding audio file node
+    $result = db_query('SELECT * FROM drqd_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
+    $nid = $result->fetchField(0);
+    
+    // Get the audio file URL
+    $player_node = node_load($nid);
+    $audio_url = $player_node->field_audio[$player_node->language][0]['uri'];
+    
+    // Get the audio file corresponding to the audio URL
+    $result = db_query('SELECT * FROM drqd_node WHERE type = :type', array(':type' => 'audio_file'));
+    foreach($result as $record) {
+        $aid = $record->nid;
+        $file_node = node_load($aid);
+        if($file_node->field_remote_file_url[$file_node->language][0]['uri'] == $audio_url) {
+            break;
+        }
+    }
+        
+    // Get file name
+    $file_name = $file_node->title;
+    
+    // Get NID of the relevant webform
+    $title = $file_name . ' Transcript Form';
+    $result = db_query("SELECT nid FROM drqd_node WHERE title = :title", array(':title' => $title));
+    $webform_nid = $result->fetchField(0);
+    
     // Get the ID of the last complete submission
-    $result = db_query("SELECT MAX(sid) FROM druq_webform_submissions WHERE is_draft = :val", array(':val' => 0));
+    $result = db_query("SELECT sid FROM drqd_webform_submissions WHERE nid = :nid", array(':nid' => $webform_nid));
     $sid = $result->fetchField(0);
     
     // Get the data of the last submission and save into an array
-    $result = db_query("SELECT data FROM druq_webform_submitted_data WHERE sid = :sid", array(':sid' => $sid));
+    $result = db_query("SELECT data FROM drqd_webform_submitted_data WHERE sid = :sid", array(':sid' => $sid));
     $raw_data = array();
     $segment = 0;
     foreach($result as $record) {
         $raw_data[$segment++] = $record->data;
     }
     
-    // Load the audio player and get the corresponding audio file node
-    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
-    $nid = $result->fetchField(0);
-    $temp_node = node_load($nid);
-    $title = $temp_node->field_audio[$temp_node->language][0]['filename'];    
-    $filename = str_replace('%20', ' ', $title);
-    $result = db_query("SELECT * FROM druq_node WHERE type = :type AND title = :filename", array('type' => 'audio_file', ':filename' => $filename));
-    $aid = $result->fetchField(0);
-    
     // Format the data
     $txt_data = format_data_txt($raw_data);
     $xml_data = format_data_xml($raw_data, date('m/d/y H:i:s'));
     
     // Write transcript data to file
-    $dest = 'public://transcripts/transcript' . $sid . '.xml';
+    $dest = 'public://transcripts/transcript' . $sid . '_' . REQUEST_TIME . '.xml';
     $file_object = file_save_data($xml_data, $dest, FILE_EXISTS_RENAME);
     if(!empty($file_object)) {
-        create_transcript_node($aid, $dest, $xml_data, $txt_data);
+        create_transcript_node($file_node, $dest, $xml_data, $txt_data);
         
         // Get node ID and delete the transcriber player
-        $result1 = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Transcriber'));
+        $result1 = db_query('SELECT * FROM drqd_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Transcriber'));
         $nid1 = $result1->fetchField(0);
         node_delete($nid1);
         
-        // Get node ID and delete the webform
-        $result2 = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => 'Transcript Form'));
+        /* Get node ID and delete the webform
+        $result2 = db_query('SELECT * FROM node WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => 'Transcript Form'));
         $nid2 = $result2->fetchField(0);
-        node_delete($nid2);        
+        node_delete($nid2);     */   
         
         drupal_set_message(t('Your data has been saved'));
         return t('Your transcript can be downloaded from the \'All Transcripts\' page.');
     }
     else {
         // Get node ID and delete the transcriber player
-        $result1 = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Transcriber'));
+        $result1 = db_query('SELECT * FROM drqd_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Transcriber'));
         $nid1 = $result1->fetchField(0);
         node_delete($nid1);
         
-        // Get node ID and delete the transcript webform
-        $result2 = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => 'Transcript Form'));
+        /* Get node ID and delete the transcript webform
+        $result2 = db_query('SELECT * FROM node WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => 'Transcript Form'));
         $nid2 = $result2->fetchField(0);
-        node_delete($nid2);
+        node_delete($nid2);*/
         
         drupal_set_message(t('Failed to save data'), 'error');        
         return t('Please try again.');
@@ -749,20 +808,32 @@ function submit_redirect_annotation() {
     $timestamp = $hours . ':' . $mins . ':' . $secs;
     
      // Load the audio player and get the corresponding audio file node
-    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
+    $result = db_query('SELECT * FROM drqd_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
     $nid = $result->fetchField(0);
-    $temp_node = node_load($nid);
-    $title = $temp_node->field_audio[$temp_node->language][0]['filename'];    
-    $filename = str_replace('%20', ' ', $title);
-    $result = db_query("SELECT * FROM druq_node WHERE type = :type AND title = :filename", array('type' => 'audio_file', ':filename' => $filename));
-    $aid = $result->fetchField(0);
+    
+    // Get the audio file URL
+    $player_node = node_load($nid);
+    $audio_url = $player_node->field_audio[$player_node->language][0]['uri'];
+    
+    // Get the audio file corresponding to the audio URL
+    $result = db_query('SELECT * FROM drqd_node WHERE type = :type', array(':type' => 'audio_file'));
+    foreach($result as $record) {
+        $aid = $record->nid;
+        $file_node = node_load($aid);
+        if($file_node->field_remote_file_url[$file_node->language][0]['uri'] == $audio_url) {
+            break;
+        }
+    }
+        
+    // Get file name
+    $filename = $file_node->title;
     
     // Get the ID of the last complete submission
-    $result = db_query("SELECT MAX(sid) FROM druq_webform_submissions", array(':val' => 0));
+    $result = db_query("SELECT MAX(sid) FROM drqd_webform_submissions", array(':val' => 0));
     $sid = $result->fetchField(0);
     
     // Get the data of the last submission and save into an array
-    $result = db_query("SELECT data FROM druq_webform_submitted_data WHERE sid = :sid", array(':sid' => $sid));
+    $result = db_query("SELECT data FROM drqd_webform_submitted_data WHERE sid = :sid", array(':sid' => $sid));
     $raw_data = array();
     $i = 0;
     foreach($result as $record) {
@@ -790,7 +861,7 @@ function submit_redirect_annotation() {
     
     // Check if the annotation already exists; create one if not
     $node_name = $filename . ' Annotation @ ' . $timestamp;
-    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'annotation', ':title' => $node_name));
+    $result = db_query('SELECT * FROM drqd_node WHERE type = :type AND title = :title', array(':type' => 'annotation', ':title' => $node_name));
     $anode = $result->fetchField(0);
     if($anode == NULL) {
         create_annotation_node($aid, $tid, $type, $timestamp);
@@ -800,12 +871,12 @@ function submit_redirect_annotation() {
     }
     
     // Get node ID and delete the annotator player
-    $result1 = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Annotator'));
+    $result1 = db_query('SELECT * FROM drqd_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Annotator'));
     $nid1 = $result1->fetchField(0);
     node_delete($nid1);
         
     // Get node ID and delete the annotation webform
-    $result2 = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => 'Annotation Form'));
+    $result2 = db_query('SELECT * FROM drqd_node WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => 'Annotation Form'));
     $nid2 = $result2->fetchField(0);
     node_delete($nid2);        
         
@@ -877,7 +948,7 @@ function format_data_txt($raw_data) {
         $timestamp = $hours . ':' . $mins . ':' . $secs;
                 
         // Concatenate the timestamp with the data
-        $data[$segment] = $timestamp . ' ' . $raw_data[$segment];
+        $data[$segment] = $timestamp . "\t" . $raw_data[$segment];
     }
     $formatted_string = $data[0];
     for($segment=1; $segment<count($data); $segment++) {
@@ -909,7 +980,7 @@ function format_data_xml($raw_data, $submit_time) {
     $timestamp = $hours . ':' . $mins . ':' . $secs;
     
     // Get node ID
-    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
+    $result = db_query('SELECT * FROM drqd_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
     $nid = $result->fetchField(0);
     
     // Load the player node and get the file name + URL
@@ -919,7 +990,7 @@ function format_data_xml($raw_data, $submit_time) {
     $audio_path = $node->field_audio[$node->language][0]['uri'];
     
     // Load the audio file and get file order
-    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_file', ':title' => $audio_file));
+    $result = db_query('SELECT * FROM drqd_node WHERE type = :type AND title = :title', array(':type' => 'audio_file', ':title' => $audio_file));
     $audio_nid = $result->fetchField(0);
     $audio_file_node = node_load($audio_nid);
     $file_order = $audio_file_node->field_interview_file_order[$audio_file_node->language][0]['value'];
@@ -995,7 +1066,7 @@ function format_data_xml($raw_data, $submit_time) {
 /**
  * Create a new node for the transcript
  */
-function create_transcript_node($aid, $filepath, $data, $txt_data) {
+function create_transcript_node($file_node, $filepath, $xml_data, $txt_data) {
     
     // Basic node creation
     $node = new stdClass();
@@ -1003,26 +1074,18 @@ function create_transcript_node($aid, $filepath, $data, $txt_data) {
     $node->language = LANGUAGE_NONE;
     node_object_prepare($node);
     
-    // Get file name
-    $result = db_query('SELECT * FROM druq_node WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
-    $nid = $result->fetchField(0);
-    $temp_node = node_load($nid);
-    $title = $temp_node->field_audio[$temp_node->language][0]['filename'];
-    $filename = str_replace('%20', ' ', $title);
-    $node->title = $filename . ' Transcript';
-    
-    $node->status = 1;
+    $node->title = $file_node->title . ' Transcript';    
+    $node->status = 0;
     $node->promote = 0;
     $node->comment = 1;
     
-    //$node->path = array('alias' => 'transcript/submitted');
-    
+    //$node->path = array('alias' => 'transcript/submitted');    
     
     // Add body
     $node->body[LANGUAGE_NONE][0]['value'] = $txt_data;
     
     // Add entity reference to audio
-    $node->field_audio_file[$node->language][0]['target_id'] = $aid;
+    $node->field_audio_file[$node->language][0]['target_id'] = $file_node->nid;
             
     // Add file
     $file = new stdClass();
@@ -1031,14 +1094,14 @@ function create_transcript_node($aid, $filepath, $data, $txt_data) {
     $file->filemime = file_get_mimetype($file->uri);
     $file->status = 1;
     $file->display = 1;
-    $file = file_copy($file, 'public://');
-    $node->field_transcript_download[LANGUAGE_NONE][0] = (array)$file;
+    $new_file = file_copy($file, 'public://');
+    $node->field_transcript_download[$node->language][0] = (array)$new_file;
     
     node_save($node);
 }
 
 /**
- * Create a new node for the transcript
+ * Create a new node for the annotation
  */
 function create_annotation_node($aid, $tid, $type, $timestamp) {
     // Basic node creation
@@ -1086,6 +1149,86 @@ function modify_annotation_node($anode, $tid, $type) {
         $node->field_uncontrolled_annotations[$node->language][]['tid'] = $tid;
     }
     node_save($node);
+}
+
+/**
+ * Implements hook_webform_submission_update
+ */
+function jplayer_webform_submission_update($node, $submission) {
+    
+    // Get and format the upated data
+    $result = db_query("SELECT data FROM drqd_webform_submitted_data WHERE sid = :sid", array(':sid' => $submission->sid));
+    $raw_data = array();
+    $segment = 0;
+    foreach($result as $record) {
+        $raw_data[$segment++] = $record->data;
+    }    
+    $txt_data = format_data_txt($raw_data);
+    $xml_data = format_data_xml($raw_data, date('m/d/y H:i:s'));
+    // Load the transcript node
+    $title = str_replace(' Form', '', $node->title);
+    $result = db_query("SELECT nid FROM drqd_node WHERE title = :title AND type = :type", array(':title' => $title, ':type' => 'transcript'));
+    $nid = $result->fetchField(0);
+    $transcript_node = node_load($nid);
+    
+    // Delete old content
+    unset($transcript_node->body[$transcript_node->language][0]['value']);
+    $fid = $transcript_node->field_transcript_download[$transcript_node->language][0]['fid'];
+    unset($transcript_node->field_transcript_download[$transcript_node->language][0]);
+    $old_file = file_load($fid);
+    file_delete($old_file, TRUE);
+    
+    // Save new content
+    $transcript_node->body[$transcript_node->language][0]['value'] = $txt_data;
+    
+    // Add file
+    $dest = 'public://transcripts/transcript' . $submission->sid . '_' . REQUEST_TIME . '.xml';
+    $file_object = file_save_data($xml_data, $dest, FILE_EXISTS_RENAME);
+    if(!empty($file_object)) {
+        $file = new stdClass();
+        $file->uid = 1;
+        $file->uri = $dest;
+        $file->filemime = file_get_mimetype($file->uri);
+        $file->status = 1;
+        $file->display = 1;
+        $new_file = file_copy($file, 'public://');
+        $transcript_node->field_transcript_download[$transcript_node->language][0] = (array)$new_file;
+    }
+    else {
+        drupal_set_message(t('Failed to save data'), 'error');
+    }
+    
+    $transcript_node->field_status[$transcript_node->language][0]['value'] = 2;
+    node_save($transcript_node);
+}
+
+/**
+ * Implements hook_node_update().
+ */
+function jplayer_node_update($node) {
+    // Check if the upated node was a transcript node
+    if($node->type == 'transcript') {
+        // Get status of the node
+        $status = $node->field_status[$node->language][0]['value'];
+        switch($status) {
+            case 1:
+                // Creation
+            case 2:
+                // Under review
+            case 3:
+                // Needs update
+                break;
+            case 4:                      
+                // Published
+                // Get node ID and delete the transcript webform
+                $title = $node->title . ' Form';
+                $result2 = db_query('SELECT * FROM drqd_node WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $title));
+                $nid2 = $result2->fetchField(0);
+                node_delete($nid2);        
+                drupal_set_message(t('The transcript has been published!'));
+                break;
+        }
+    }
 }
 
 /****************************************************************************
