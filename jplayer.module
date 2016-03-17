@@ -28,6 +28,12 @@ function jplayer_menu() {
       'access callback' => TRUE,      
   );
   
+  $items['transcript/review'] = array(
+      'title' => t('All done!'),
+      'page callback' => 'submit_redirect_review',
+      'access callback' => TRUE,      
+  );
+  
   $items['annotation/submitted'] = array(
       'title' => t('All done!'),
       'page callback' => 'submit_redirect_annotation',
@@ -55,88 +61,6 @@ function jplayer_menu() {
 /****************************************************************************
  *******************************CUSTOM STUFF*********************************
  ****************************************************************************/
-
-/* For modal windows, for annotation
-function cannotation_callback($js = NULL) {
-    if($js) {
-        ctools_add_js('ajax-responder');
-        ctools_include('ajax');
-        ctools_include('modal');
-        $form_state = array(
-            'ajax' => TRUE,
-            'title' => t('Annotation Form'),
-        );
-        $output = ctools_modal_form_wrapper('cannotation_form', $form_state);
-        print ajax_render($output);
-        drupal_exit();
-    }
-    else {
-        return drupal_get_form('cannotation_form');
-    }
-}
-
-function uannotation_callback($js = NULL) {
-    if($js) {
-        ctools_add_js('ajax-responder');
-        ctools_include('ajax');
-        ctools_include('modal');
-        $form_state = array(
-            'ajax' => TRUE,
-            'title' => t('Annotation Form'),
-        );
-        $output = ctools_modal_form_wrapper('uannotation_form', $form_state);
-        print ajax_render($output);
-        drupal_exit();
-    }
-    else {
-        return drupal_get_form('uannotation_form');
-    }
-}
-
-function cannotation_form() {
-    $form = array();
-    
-    $form['list'] = array(
-        '#type' => 'select',
-        '#title' => t('Choose annotation'),
-        '#options' => array(t('Select'), t('Label 1'), t('Label 2'), t('Label 3'), t('Label 4')),
-    );
-    
-    $form['submit'] = array(
-        '#type' => 'submit',
-        '#value' => 'Submit',
-        '#submit' => array('cannotation_submit'),
-    );
-    
-    return $form;
-}
-
-function uannotation_form() {
-    $form = array();
-    
-    $form['text'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Enter text here'),
-    );
-    
-    $form['submit'] = array(
-        '#type' => 'submit',
-        '#value' => 'Submit',
-        '#submit' => array('uannotation_submit'),
-    );
-    
-    return $form;
-}
-
-function cannotation_submit($form, &$form_state) {
-    $commands[] = ctools_modal_command_dismiss();
-    $commands[] = ctools_ajax_command_redirect('<front>');
-    print ajax_render($commands);
-}
-
-function uannotation_submit($form, &$form_state) {
-    
-}*/
 
 /**
  * Implements hook_help().
@@ -392,7 +316,7 @@ function create_transcript_webform_node($file_name) {
             'private' => 0,
         ),
         'page_num' => $number,
-    );*/
+    );
     
     // Status to indicate if the transcript is ready to be reviewed
     $components[] = array(
@@ -454,7 +378,7 @@ function create_transcript_webform_node($file_name) {
             'weight' => ++$index,
             'page_num' => $i,
         );
-    }
+    }*/
     
     /* Where to email it to?
     $emails = array(
@@ -767,12 +691,39 @@ function create_transcript_node($file_node, $filepath, $txt_data) {
  */
 function jplayer_form_webform_client_form_alter(&$form, &$form_state) {
     global $user;
-    if(in_array('anonymous user', $user->roles)) {
-        $form['actions']['submit']['#access'] = FALSE;
-    }
-    elseif(in_array(array('authenticated user', 'administrator'), $user->roles)) {
+    if(in_array('admin', $user->roles)) {
         $form['actions']['submit']['#access'] = TRUE;
+        if(array_key_exists('review', $form['actions'])) {
+            $form['actions']['review']['#access'] = FALSE;
+        }
     }
+    elseif(in_array('authenticated user', $user->roles)) {
+        $form['actions']['submit']['#access'] = FALSE;
+        if(!array_key_exists('next', $form['actions'])) {
+            $form['actions']['review'] = array(
+                '#type' => 'submit',
+                '#value' => 'Submit for Review',
+                '#submit' => array('review_callback'),
+            );
+        }
+        //$form['#submit'] = array('submit_for_review');
+        //if($form['actions'][''])
+    }
+}
+
+/**
+ * Steps to take when a transcript is submitted for review
+ */
+function review_callback($form, &$form_state) {
+    drupal_set_message('Your data has been saved!');
+    drupal_goto('transcript/review');
+}
+
+/**
+ * Page callback when a transcript is submitted for review
+ */
+function submit_redirect_review() {
+    return t('You will be notified once the transcript has been reviewed.');
 }
 
 /*************************ANNOTATOR FUNCTIONS**********************************/
