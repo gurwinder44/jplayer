@@ -34,27 +34,17 @@ function jplayer_menu() {
       'access callback' => TRUE,      
   );
   
+  $items['transcript/edit'] = array(
+      'title' => t('All done!'),
+      'page callback' => 'submit_redirect_edit',
+      'access callback' => TRUE,      
+  );
+  
   $items['annotation/submitted'] = array(
       'title' => t('All done!'),
       'page callback' => 'submit_redirect_annotation',
       'access callback' => TRUE,      
-  );
-  
-  /* For modal windows, for annotation
-  $items['content/cannotator/%ctools_js'] = array(
-      'title' => t('Annotator (Controlled)'),
-      'page arguments' => array(2),
-      'page callback' => 'cannotation_callback',
-      'access callback' => TRUE,
-  );
-  
-  $items['content/uannotator/%ctools_js'] = array(
-      'title' => t('Annotator (Uncontrolled)'),
-      'page arguments' => array(2),
-      'page callback' => 'uannotation_callback',
-      'access callback' => TRUE,
-  ); */
-  
+  );  
   return $items;
 }
 
@@ -302,83 +292,54 @@ function create_transcript_webform_node($file_name) {
         }
     }
     
-    /* Page break: optional
-    $components[] = array(
-        'name' => 'Page ' . (++$number),
-        'form_key' => 'page_' . $number,
-        'type' => 'pagebreak',
-        'weight' => $index,
-        'pid' => 0,
-        'value' => '',
-        'extra' => array(
-            'next_page_label' => 'Next',
-            'prev_page_label' => 'Previous',
-            'private' => 0,
-        ),
-        'page_num' => $number,
-    );
-    
-    // Status to indicate if the transcript is ready to be reviewed
-    $components[] = array(
-        'pid' => '0',
-        'form_key' => 'status',
-        'name' => 'Status (only check if you have no further changes)',
-        'type' => 'select',
-        'value' => '',
-        'extra' => array (
-            'items' => '1|Ready for review
-2|Needs to be edited',
-            'multiple' => 0,
-            'title_display' => 'before',
-            'description_above' => 0,
-            'private' => 0,
-            'wrapper_classes' => '',
-            'css_classes' => '',
-            'aslist' => 0,
-            'empty_option' => '',
-            'optrand' => 0,
-            'other_option' => NULL,
-            'other_text' => 'Other...',
-            'description' => '',
-            'custom_keys' => false,
-            'options_source' => '',
-            'analysis' => true,
-        ),
-        'required' => '0',
-        'weight' => ++$index,
-        'page_num' => ++$i,
-    );
-    
-    global $user;
-    if(in_array('authenticated user', $user->roles)) {
+    // If user is reviewing
+    //global $user;
+    //if(in_array('administrator', $user->roles)) {
+        
+        // Page break
+        $components[] = array(
+            'name' => 'Page ' . ($number+1),
+            'form_key' => 'page_' . ($number+1),
+            'type' => 'pagebreak',
+            'weight' => $index,
+            'pid' => 0,
+            'value' => '',
+            'extra' => array(
+                'next_page_label' => 'Next',
+                'prev_page_label' => 'Previous',
+                'private' => 0,
+            ),
+            'page_num' => ($number+1),
+        );
+        
+        // Comment box
         $components[] = array(
             'pid' => '0',
             'form_key' => 'comments',
             'name' => 'Comments',
-            'type' => 'textfield',
+            'type' => 'textarea',
             'value' => '',
-            'extra' => array (
+            'extra' => 
+            array (
+                'description' => 'Only for quality control use. Reviewers can add their notes if a transcript is being marked for editing.',
                 'title_display' => 'before',
                 'description_above' => 0,
                 'private' => 0,
                 'wrapper_classes' => '',
                 'css_classes' => '',
-                'width' => '',
-                'maxlength' => '',
-                'field_prefix' => '',
-                'field_suffix' => '',
+                'cols' => '',
+                'rows' => '',
+                'resizable' => 1,
                 'disabled' => 0,
-                'unique' => 0,
-                'description' => '',
                 'placeholder' => '',
-                'attributes' => array (),
+                'attributes' => array(),
                 'analysis' => false,
             ),
             'required' => '0',
-            'weight' => ++$index,
+            'weight' => ($index+1),
             'page_num' => $i,
         );
-    }*/
+    //}
     
     /* Where to email it to?
     $emails = array(
@@ -477,6 +438,9 @@ function submit_redirect_transcript() {
     foreach($result as $record) {
         $raw_data[$segment++] = $record->data;
     }
+    
+    // Delete the last element of the array (the comment box))
+    unset($raw_data[count($raw_data)-1]);
     
     // Format the data
     $txt_data = format_data_txt($raw_data);
@@ -663,9 +627,7 @@ function create_transcript_node($file_node, $filepath, $txt_data) {
     $node->title = $file_node->title . ' Transcript';    
     $node->status = 0;
     $node->promote = 0;
-    $node->comment = 1;
-    
-    //$node->path = array('alias' => 'transcript/submitted');    
+    $node->comment = 1;    
     
     // Add body
     $node->body[LANGUAGE_NONE][0]['value'] = $txt_data;
@@ -691,14 +653,29 @@ function create_transcript_node($file_node, $filepath, $txt_data) {
  */
 function jplayer_form_webform_client_form_alter(&$form, &$form_state) {
     global $user;
-    if(in_array('admin', $user->roles)) {
+    if(in_array('anonymous user', $user->roles)) {
+        // Show the actual Submit button
         $form['actions']['submit']['#access'] = TRUE;
+        // Show the comments box
+        $form['submitted']['comments']['#attributes'] = array('enabled' => '1');
         if(array_key_exists('review', $form['actions'])) {
             $form['actions']['review']['#access'] = FALSE;
         }
+        // Check if it's the last page
+        if(!array_key_exists('next', $form['actions'])) {
+            $form['actions']['Return for Editing'] = array(
+                '#type' => 'submit',
+                '#value' => 'Return for Editing',
+                '#submit' => array('edit_callback'),
+            );
+        }
     }
-    elseif(in_array('authenticated user', $user->roles)) {
+    elseif(in_array('administrator', $user->roles)) {
+        // Hide the actual submit button
         $form['actions']['submit']['#access'] = FALSE;
+        // Make the comments box read-only
+        $form['submitted']['comments']['#attributes'] = array('disabled' => '1');
+        // Check if it's the last page and add a 'Submit for Review' button
         if(!array_key_exists('next', $form['actions'])) {
             $form['actions']['review'] = array(
                 '#type' => 'submit',
@@ -715,15 +692,64 @@ function jplayer_form_webform_client_form_alter(&$form, &$form_state) {
  * Steps to take when a transcript is submitted for review
  */
 function review_callback($form, &$form_state) {
-    drupal_set_message('Your data has been saved!');
+    
+    // Save the form as a draft
+    force_save($form, $form_state);
+    
+    // Notify reviewer that this transcript is ready for review
+    //drupal_mail()
+    
+    drupal_set_message('Your transcript has been submitted for review!');
     drupal_goto('transcript/review');
+}
+
+/**
+ * Steps to take when a transcript is returned for editing
+ */
+function edit_callback($form, &$form_state) {
+    
+    // Save any changes the reviewer may have made
+    force_save($form, $form_state);
+    
+    // Notify the author who created this transcript
+    //drupal_mail() the author
+    
+    drupal_set_message('The transcript has been marked for editing.');
+    drupal_goto('transcript/edit');
+}
+
+/**
+ * Function to save webform data as a draft
+ */
+function force_save($form, &$form_state) {
+    global $user;
+    $draft_sid = _webform_fetch_draft_sid($form['#node']->nid, $user->uid);    
+    $form_state['values']['details']['sid'] = $draft_sid;
+    $form_state['values']['op'] = !empty($form['actions']['draft']['#value']) ? $form['actions']['draft']['#value'] : t('Save Draft');    
+    $form_state['save_draft'] = TRUE;
+    webform_client_form_pages($form, $form_state);
+    webform_client_form_submit($form, $form_state);
 }
 
 /**
  * Page callback when a transcript is submitted for review
  */
-function submit_redirect_review() {
+function submit_redirect_review() {    
     return t('You will be notified once the transcript has been reviewed.');
+}
+
+/**
+ * Page callback when a transcript is marked for editing
+ */
+function submit_redirect_edit() {
+    return t('The transcriber will be notified that this transcript needs changes.');
+}
+
+/**
+ * Implements hook_mail().
+ */
+function jplayer_mail($key, &$message, $params) {
+    
 }
 
 /*************************ANNOTATOR FUNCTIONS**********************************/
