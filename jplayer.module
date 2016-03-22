@@ -25,25 +25,29 @@ function jplayer_menu() {
   $items['transcript/submitted'] = array(
       'title' => t('All done!'),
       'page callback' => 'submit_redirect_transcript',
-      'access callback' => TRUE,      
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
   );
   
   $items['transcript/review'] = array(
       'title' => t('All done!'),
       'page callback' => 'submit_redirect_review',
-      'access callback' => TRUE,      
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
   );
   
   $items['transcript/edit'] = array(
       'title' => t('All done!'),
       'page callback' => 'submit_redirect_edit',
-      'access callback' => TRUE,      
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
   );
   
   $items['annotation/submitted'] = array(
       'title' => t('All done!'),
       'page callback' => 'submit_redirect_annotation',
-      'access callback' => TRUE,      
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
   );  
   return $items;
 }
@@ -91,7 +95,7 @@ function jplayer_init() {
 }
 
 /**
- * Function to create a jplayer node with for segmented/normal audio playback.
+ * Function to create a jplayer node for segmented/normal audio playback.
  */
 function create_player_node($content) {
     $node = new StdClass();
@@ -101,9 +105,11 @@ function create_player_node($content) {
     $node->language = LANGUAGE_NONE;    
     $node->title = $content;
     
-    /*global $user;
-    $node->uid = $user->uid;*/
+    global $user;
+    $node->uid = $user->uid;
+    $node->name = $user->name;
     
+    $node->status = 1;
     $node->promote = 0;
     $node->comment = 1;
     
@@ -116,6 +122,7 @@ function create_player_node($content) {
     $temp_node = node_load($nid);
     $audio_url = $temp_node->field_audio[$temp_node->language][0];
     $node->field_audio[LANGUAGE_NONE][0] = $audio_url;
+    $node = node_submit($node);
     node_save($node);
 }
 
@@ -208,6 +215,12 @@ function transcribe_handler($form, &$form_state) {
  */
 function create_transcript_webform_node($file_name) {
     
+    $rids = array();
+    $result = db_query('SELECT * FROM {role}');
+    foreach($result as $record) {
+        $rids[] = $record->rid;
+    }
+    
     // Basic node creation
     $node = new StdClass();
     $node->type = 'webform';
@@ -217,9 +230,11 @@ function create_transcript_webform_node($file_name) {
     $node->body[LANGUAGE_NONE][0]['value'] = '';
     $node->body[LANGUAGE_NONE][0]['format'] = 'full_html';
     
-    /*global $user;
-    $node->uid = $user->uid;*/
+    global $user;
+    $node->uid = $user->uid;
+    $node->name = $user->name;
     
+    $node->status = 1;
     $node->promote = 0;
     $node->comment = 1;
     
@@ -391,14 +406,13 @@ function create_transcript_webform_node($file_name) {
         array (
         ),
         'record_exists' => TRUE,
-        'roles' => array(
-            0 => '1',
-        ),
+        'roles' => $rids,
         //'emails' => $emails,
         'components' => $components,
     );
     
     // Save the node
+    $node = node_submit($node);
     node_save($node);    
 }
 
@@ -462,7 +476,7 @@ function submit_redirect_transcript() {
     $dest = 'public://transcripts/transcript' . $sid . '_' . REQUEST_TIME . '.xml';
     $file_object = file_save_data($xml_data, $dest, FILE_EXISTS_RENAME);
     if(!empty($file_object)) {
-        create_transcript_node($file_node, $dest, $txt_data);
+        create_transcript_node($file_node, $dest, $txt_data, $author_user);
     
         // Send an email to the author
         $to = $author_user->mail;
@@ -639,7 +653,7 @@ function format_data_xml($raw_data, $submit_time, $author_user) {
 /**
  * Create a new node for the transcript
  */
-function create_transcript_node($file_node, $filepath, $txt_data) {
+function create_transcript_node($file_node, $filepath, $txt_data, $creator) {
     
     // Basic node creation
     $node = new stdClass();
@@ -650,7 +664,9 @@ function create_transcript_node($file_node, $filepath, $txt_data) {
     $node->title = $file_node->title . ' Transcript';    
     $node->status = 1;
     $node->promote = 0;
-    $node->comment = 1;    
+    $node->comment = 1;
+    $node->uid = $creator->uid;
+    $node->name = $creator->name;
     
     // Add body
     $node->body[LANGUAGE_NONE][0]['value'] = $txt_data;
@@ -659,11 +675,7 @@ function create_transcript_node($file_node, $filepath, $txt_data) {
     $node->field_audio_file[$node->language][0]['target_id'] = $file_node->nid;
             
     // Add file
-    $file = new stdClass();
-    
-    /*global $user;
-    $node->uid = $user->uid;*/
-    
+    $file = new stdClass();    
     $file->uri = $filepath;
     $file->filemime = file_get_mimetype($file->uri);
     $file->status = 1;
@@ -671,6 +683,7 @@ function create_transcript_node($file_node, $filepath, $txt_data) {
     $file = file_copy($file, 'public://');
     $node->field_transcript_download[$node->language][0] = (array)$file;
     
+    $node = node_submit($node);
     node_save($node);
 }
 
@@ -679,7 +692,7 @@ function create_transcript_node($file_node, $filepath, $txt_data) {
  */
 function jplayer_form_webform_client_form_alter(&$form, &$form_state) {
     global $user;
-    if(in_array('administrator', $user->roles)) {
+    if(in_array('quality control', $user->roles)) {
         // Show the actual Submit button
         $form['actions']['submit']['#access'] = TRUE;
         // Show the comments box
