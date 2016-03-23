@@ -22,6 +22,14 @@ function jplayer_menu() {
     'file' => 'includes/jplayer.admin.inc',
   );
   
+  $items['Player/%'] = array(
+      'title' => t('Player'),
+      'page callback' => 'play_callback',
+      'page arguments' => array(1),
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+  );
+  
   $items['transcript/submitted'] = array(
       'title' => t('All done!'),
       'page callback' => 'submit_redirect_transcript',
@@ -95,9 +103,22 @@ function jplayer_init() {
 }
 
 /**
+ * Function to create a player when a link is clicked in a view
+ */
+function play_callback($nid) {
+    $audio_node = node_load($nid);
+    if($node = menu_get_object()) {
+        
+    }
+    else {
+        create_player_node('Player', $audio_node);
+    }
+}
+
+/**
  * Function to create a jplayer node for segmented/normal audio playback.
  */
-function create_player_node($content) {
+function create_player_node($content, $audio_file = NULL) {
     $node = new StdClass();
     $node->type = 'audio_player';
     node_object_prepare($node);
@@ -111,17 +132,23 @@ function create_player_node($content) {
     
     $node->status = 1;
     $node->promote = 0;
-    $node->comment = 1;
+    $node->comment = 1;  
     
-    $alias = 'content/' . $content;
+    if(is_null($audio_file)) {
+        // Get node ID
+        $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
+        $nid = $result->fetchField(0);
+        $temp_node = node_load($nid);
+        $node->field_audio[LANGUAGE_NONE][0] = $temp_node->field_audio[$temp_node->language][0];
+        $alias = 'content/' . $content;
+    }
+    else {
+        $alias = $content . '/' . $audio_file->nid;
+        $node->field_audio[$node->language][0] = $audio_file->field_remote_file_url[$audio_file->language][0];
+        $node->field_player_audio_file[$node->language][0]['target_id'] = $audio_file->nid;
+    }    
     $node->path = array('alias' => $alias);
     
-    // Get node ID
-    $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
-    $nid = $result->fetchField(0);
-    $temp_node = node_load($nid);
-    $audio_url = $temp_node->field_audio[$temp_node->language][0];
-    $node->field_audio[LANGUAGE_NONE][0] = $audio_url;
     $node = node_submit($node);
     node_save($node);
 }
@@ -178,7 +205,6 @@ function getOptionsForm() {
  * Submit button handlers for options form
  */
 function transcribe_handler($form, &$form_state) {
-    
     // Get node ID
     $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
     $nid = $result->fetchField(0);
