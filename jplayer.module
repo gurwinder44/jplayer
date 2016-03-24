@@ -81,17 +81,20 @@ function jplayer_help($path, $arg)
  */
 function jplayer_init() {
     
+    $url = request_path();
+    
     // Pause the player when user clicks ANNOTATE button
     drupal_add_js('jQuery(document).ready(function() {
         jQuery("#edit-annotate").click(function() {
             jQuery("*").jPlayer("pause");
         });
     });', 'inline');    // Using the * selector for now, but would be better if somehow the specific jplayer object ID could be obtained
+    
     $action = 1;
-    if(request_path() == 'content/transcriber') {
+    if(drupal_match_path($url, 'Transcriber/*')) {
         $action = 0;        
     }
-    if(request_path() == 'content/player') {
+    if(drupal_match_path($url, 'Player/*')) {
         $action = 1;
     }
     if(request_path() == 'content/annotator') {
@@ -124,7 +127,7 @@ function create_player_node($content, $audio_file = NULL) {
     node_object_prepare($node);
     
     $node->language = LANGUAGE_NONE;    
-    $node->title = $content;
+    $node->title = $content . ': ' . $audio_file->title;
     
     global $user;
     $node->uid = $user->uid;
@@ -205,34 +208,17 @@ function getOptionsForm() {
  * Submit button handlers for options form
  */
 function transcribe_handler($form, &$form_state) {
-    // Get node ID
-    $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
-    $nid = $result->fetchField(0);
     
-    // Get the audio file URL
-    $player_node = node_load($nid);
-    $audio_url = $player_node->field_audio[$player_node->language][0]['uri'];
-    
-    // Get the audio file corresponding to the audio URL
-    $result = db_query('SELECT * FROM {node} WHERE type = :type', array(':type' => 'audio_file'));
-    foreach($result as $record) {
-        $nid = $record->nid;
-        $file_node = node_load($nid);
-        if($file_node->field_remote_file_url[$file_node->language][0]['uri'] == $audio_url) {
-            break;
-        }
-    }
-        
-    // Get file name
-    $file_name = $file_node->title;
+    // Get the audio file node
+    $player_node = menu_get_object();
+    $audio_file = node_load($player_node->field_player_audio_file[$player_node->language][0]['target_id']);
     
     // Create new audio_player node with an associated webform
-    $transcriber_name = $file_name . ' Transcriber';
-    create_player_node('Transcriber');    
-    create_transcript_webform_node($file_name);
+    create_player_node('Transcriber', $audio_file);
+    create_transcript_webform_node($audio_file->title);
     
     // Redirect to the transcriber
-    $url = 'content/transcriber';
+    $url = 'Transcriber/' . $audio_file->nid;
     drupal_goto($url);
 }
 
@@ -271,7 +257,7 @@ function create_transcript_webform_node($file_name) {
         $segments = ceil($duration/5);
     }
     else {
-        drupal_set_message(t('Try refreshing the page!'), 'warning');
+        drupal_set_message(t('Something went wrong. Start over?'), 'warning');
         $segments = 1;
     }
     $maxSegments = 6;
@@ -403,7 +389,7 @@ function create_transcript_webform_node($file_name) {
     $node->webform = array(
         'confirmation' => '',
         'confirmation_format' => 'filtered_html',
-        'redirect_url' => 'transcript/submitted',
+        'redirect_url' => '<none>',
         'status' => '1',
         'block' => '0',
         'teaser' => '0',
@@ -443,46 +429,36 @@ function create_transcript_webform_node($file_name) {
 }
 
 /**
+ * Implements hook_webform_submission_insert().
+ */
+function jplayer_webform_submission_insert($node, $submission) {
+}
+
+/**
+ * Implements hook_webform_submission_update().
+ */
+function jplayer_webform_submission_update($node, $submission) {
+}
+
+/**
  * Steps to take after the transcript webform is submitted
  */
-function submit_redirect_transcript() {
-    
+function submit_redirect_transcript($form, &$form_state) {
+
     global $user;
-    
     // Load the audio player and get the corresponding audio file node
-    $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
-    $nid = $result->fetchField(0);
-    
-    // Get the audio file URL
-    $player_node = node_load($nid);
-    $audio_url = $player_node->field_audio[$player_node->language][0]['uri'];
-    
-    // Get the audio file corresponding to the audio URL
-    $result = db_query('SELECT * FROM {node} WHERE type = :type', array(':type' => 'audio_file'));
-    foreach($result as $record) {
-        $aid = $record->nid;
-        $file_node = node_load($aid);
-        if($file_node->field_remote_file_url[$file_node->language][0]['uri'] == $audio_url) {
-            break;
-        }
-    }
-        
-    // Get file name
-    $file_name = $file_node->title;
-        
-    // Get NID of the relevant webform
-    $title = $file_name . ' Transcript Form';
-    $result = db_query("SELECT nid FROM {node} WHERE title = :title", array(':title' => $title));
-    $webform_nid = $result->fetchField(0);
+    $player_node = menu_get_object();
+    $audio_file = node_load($player_node->field_player_audio_file[$player_node->language][0]['target_id']);
+          
+    // Get the relevant webform
+    $webform_node = $form['#node'];
     
     // Get the author    
-    $webform_node = node_load($webform_nid);
-    $author_user = user_load($webform_node->uid);
+    $creator = user_load($webform_node->uid);
     
     // Get the ID of the last complete submission
-    $result = db_query("SELECT sid FROM {webform_submissions} WHERE nid = :nid", array(':nid' => $webform_nid));
+    $result = db_query("SELECT * FROM {webform_submissions} WHERE nid = :nid", array(':nid' => $webform_node->nid));
     $sid = $result->fetchField(0);
-    
     // Get the data of the last submission and save into an array
     $result = db_query("SELECT data FROM {webform_submitted_data} WHERE sid = :sid", array(':sid' => $sid));
     $raw_data = array();
@@ -496,18 +472,18 @@ function submit_redirect_transcript() {
     
     // Format the data
     $txt_data = format_data_txt($raw_data);
-    $xml_data = format_data_xml($raw_data, date('m/d/y H:i:s'), $author_user);
+    $xml_data = format_data_xml($audio_file, $raw_data, date('m/d/y H:i:s'), $creator);
     
     // Write transcript data to file
     $dest = 'public://transcripts/transcript' . $sid . '_' . REQUEST_TIME . '.xml';
     $file_object = file_save_data($xml_data, $dest, FILE_EXISTS_RENAME);
     if(!empty($file_object)) {
-        create_transcript_node($file_node, $dest, $txt_data, $author_user);
+        create_transcript_node($audio_file, $dest, $txt_data, $creator);
     
         // Send an email to the author
-        $to = $author_user->mail;
+        $to = $creator->mail;
         $key = 'notice';
-        $language = $author_user->language;
+        $language = $creator->language;
         $from = $user->mail;
         $body[] = 'Your transcript was reviewed by ' . $user->name . ' and has been published.';
         $params = array(
@@ -517,22 +493,25 @@ function submit_redirect_transcript() {
         drupal_mail('jplayer', $key, $to, $language, $params, $from, TRUE);
         
         // Get node ID and delete the transcriber player
-        $result1 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Transcriber'));
+        $title = 'Transcriber: ' . $audio_file->title;
+        $result1 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => $title));
         $nid1 = $result1->fetchField(0);
         node_delete($nid1);
         
         // Get node ID and delete the webform
-        $title = $file_name . ' Transcript Form';
+        $title = $audio_file->title . ' Transcript Form';
         $result2 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $title));
         $nid2 = $result2->fetchField(0);
         node_delete($nid2);
         
         drupal_set_message(t('Your data has been saved'));
-        return t('Your transcript can be downloaded from the \'All Transcripts\' page.');
+        $redirect_url = 'Player/' . $audio_file->nid;
+        drupal_goto($redirect_url);
     }
     else {
         // Get node ID and delete the transcriber player
-        $result1 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Transcriber'));
+        $title = 'Transcriber: ' . $audio_file->title;
+        $result1 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => $title));
         $nid1 = $result1->fetchField(0);
         node_delete($nid1);
         
@@ -542,8 +521,9 @@ function submit_redirect_transcript() {
         $nid2 = $result2->fetchField(0);
         node_delete($nid2);
         
-        drupal_set_message(t('Failed to save data'), 'error');        
-        return t('Please try again.');
+        drupal_set_message(t('Failed to save data'), 'error');
+        $redirect_url = 'Player/' . $audio_file->nid;
+        drupal_goto($redirect_url);
     }
 }
 
@@ -574,11 +554,11 @@ function format_data_txt($raw_data) {
 /**
  * Format the data into a TEI compliant XML file
  */
-function format_data_xml($raw_data, $submit_time, $author_user) {
+function format_data_xml($audio_file, $raw_data, $submit_time, $creator) {
     
     // Get username 
-    $author = $author_user->name;
-    $author_email = $author_user->mail;
+    $author = $creator->name;
+    $author_email = $creator->mail;
     
     // Get number of segments from the javascript file
     $cookie_name = 'seginfo';
@@ -592,24 +572,12 @@ function format_data_xml($raw_data, $submit_time, $author_user) {
     $secs = sprintf('%02d', floor($duration % 60));
     $timestamp = $hours . ':' . $mins . ':' . $secs;
     
-    // Get node ID
-    $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
-    $nid = $result->fetchField(0);
-    
-    // Load the player node and get the file name + URL
-    $node = node_load($nid);
-    $audio_file_raw = $node->field_audio[$node->language][0]['filename'];
-    $audio_file = str_replace('%20', ' ', $audio_file_raw);
-    $audio_path = $node->field_audio[$node->language][0]['uri'];
-    
-    // Load the audio file and get file order
-    $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_file', ':title' => $audio_file));
-    $audio_nid = $result->fetchField(0);
-    $audio_file_node = node_load($audio_nid);
-    $file_order = $audio_file_node->field_interview_file_order[$audio_file_node->language][0]['value'];
+    $audio_file_name = $audio_file->title;
+    $audio_path = $audio_file->field_remote_file_url[$audio_file->language][0]['uri'];
+    $file_order = $audio_file->field_interview_file_order[$audio_file->language][0]['value'];
     
     // Get collection (distributor?)
-    $collection_nid = $audio_file_node->field_collection[$audio_file_node->language][0]['target_id'];
+    $collection_nid = $audio_file->field_collection[$audio_file->language][0]['target_id'];
     $collection_node = node_load($collection_nid);
     $distributor = $collection_node->title;
     
@@ -619,7 +587,7 @@ function format_data_xml($raw_data, $submit_time, $author_user) {
             . "\t<teiHeader>\r\n"
             . "\t\t<fileDesc>\r\n"
             . "\t\t\t<titleStmt>\r\n"
-            . "\t\t\t\t<title>" . $audio_file . " Transcription</title>\r\n"
+            . "\t\t\t\t<title>" . $audio_file_name . " Transcription</title>\r\n"
             . "\t\t\t\t<author>" . $author . "</author>\r\n"
             . "\t\t\t\t<respStmt>\r\n"
             . "\t\t\t\t\t<resp>Transcription of audio into text</resp>\r\n"
@@ -716,9 +684,15 @@ function create_transcript_node($file_node, $filepath, $txt_data, $creator) {
 /**
  * Implements hook_form_BASE_FORM_ID_alter().
  */
-function jplayer_form_webform_client_form_alter(&$form, &$form_state) {
+function jplayer_form_webform_client_form_alter(&$form, &$form_state) {    
+    
+    // If there's a submit button, run custom submit code after the default submit behavior
+    if(array_key_exists('submit', $form['actions'])) {        
+        $form['#submit'][] = 'submit_redirect_transcript';
+    }
+    
     global $user;
-    if(in_array('quality control', $user->roles)) {
+    if(in_array('administrator', $user->roles)) {
         // Show the actual Submit button
         $form['actions']['submit']['#access'] = TRUE;
         // Show the comments box
@@ -795,7 +769,12 @@ function review_callback($form, &$form_state) {
     }
     
     drupal_set_message('Your transcript has been submitted for review!');
-    drupal_goto('transcript/review');
+    
+    // Get the transcriber player node
+    $player_node = menu_get_object();
+    $file_node = node_load($player_node->field_player_audio_file[$player_node->language][0]['target_id']);
+    $redirect_url = 'Player/' . $pfile_node->nid;
+    drupal_goto($redirect_url);
 }
 
 /**
@@ -824,7 +803,12 @@ function edit_callback($form, &$form_state) {
     drupal_mail('jplayer', $key, $to, $language, $params, $from, TRUE);
     
     drupal_set_message('The transcript has been marked for editing.');
-    drupal_goto('transcript/edit');
+    
+    // Get the transcriber player node
+    $player_node = menu_get_object();
+    $file_node = node_load($player_node->field_player_audio_file[$player_node->language][0]['target_id']);
+    $redirect_url = 'Player/' . $file_node->nid;
+    drupal_goto($redirect_url);
 }
 
 /**
@@ -838,20 +822,6 @@ function force_save($form, &$form_state) {
     $form_state['save_draft'] = TRUE;
     webform_client_form_pages($form, $form_state);
     webform_client_form_submit($form, $form_state);
-}
-
-/**
- * Page callback when a transcript is submitted for review
- */
-function submit_redirect_review() {    
-    return t('You will be notified once the transcript has been reviewed.');
-}
-
-/**
- * Page callback when a transcript is marked for editing
- */
-function submit_redirect_edit() {
-    return t('The transcriber will be notified that this transcript needs changes.');
 }
 
 /**
