@@ -30,33 +30,6 @@ function jplayer_menu() {
       'type' => MENU_CALLBACK,
   );
   
-  $items['transcript/submitted'] = array(
-      'title' => t('All done!'),
-      'page callback' => 'submit_redirect_transcript',
-      'access callback' => TRUE,
-      'type' => MENU_CALLBACK,
-  );
-  
-  $items['transcript/review'] = array(
-      'title' => t('All done!'),
-      'page callback' => 'submit_redirect_review',
-      'access callback' => TRUE,
-      'type' => MENU_CALLBACK,
-  );
-  
-  $items['transcript/edit'] = array(
-      'title' => t('All done!'),
-      'page callback' => 'submit_redirect_edit',
-      'access callback' => TRUE,
-      'type' => MENU_CALLBACK,
-  );
-  
-  $items['annotation/submitted'] = array(
-      'title' => t('All done!'),
-      'page callback' => 'submit_redirect_annotation',
-      'access callback' => TRUE,
-      'type' => MENU_CALLBACK,
-  );  
   return $items;
 }
 
@@ -111,7 +84,8 @@ function jplayer_init() {
 function play_callback($nid) {
     $audio_node = node_load($nid);
     if($node = menu_get_object()) {
-        
+        $url = 'Player/' . $nid;
+        drupal_goto($url);
     }
     else {
         create_player_node('Player', $audio_node);
@@ -135,21 +109,12 @@ function create_player_node($content, $audio_file = NULL) {
     
     $node->status = 1;
     $node->promote = 0;
-    $node->comment = 1;  
+    $node->comment = 1;
     
-    if(is_null($audio_file)) {
-        // Get node ID
-        $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
-        $nid = $result->fetchField(0);
-        $temp_node = node_load($nid);
-        $node->field_audio[LANGUAGE_NONE][0] = $temp_node->field_audio[$temp_node->language][0];
-        $alias = 'content/' . $content;
-    }
-    else {
-        $alias = $content . '/' . $audio_file->nid;
-        $node->field_audio[$node->language][0] = $audio_file->field_remote_file_url[$audio_file->language][0];
-        $node->field_player_audio_file[$node->language][0]['target_id'] = $audio_file->nid;
-    }    
+    $alias = $content . '/' . $audio_file->nid;
+    $node->field_audio[$node->language][0] = $audio_file->field_remote_file_url[$audio_file->language][0];
+    $node->field_player_audio_file[$node->language][0]['target_id'] = $audio_file->nid;
+       
     $node->path = array('alias' => $alias);
     
     $node = node_submit($node);
@@ -684,44 +649,52 @@ function create_transcript_node($file_node, $filepath, $txt_data, $creator) {
 /**
  * Implements hook_form_BASE_FORM_ID_alter().
  */
-function jplayer_form_webform_client_form_alter(&$form, &$form_state) {    
-    
-    // If there's a submit button, run custom submit code after the default submit behavior
-    if(array_key_exists('submit', $form['actions'])) {        
-        $form['#submit'][] = 'submit_redirect_transcript';
-    }
+function jplayer_form_webform_client_form_alter(&$form, &$form_state) {
     
     global $user;
-    if(in_array('administrator', $user->roles)) {
-        // Show the actual Submit button
-        $form['actions']['submit']['#access'] = TRUE;
-        // Show the comments box
-        $form['submitted']['comments']['#attributes'] = array('enabled' => '1');
-        if(array_key_exists('review', $form['actions'])) {
-            $form['actions']['review']['#access'] = FALSE;
+    
+    // If it's a transcript form
+    if(strpos($form['#node']->title, 'Transcript') != FALSE) {
+        // If there's a submit button, run custom submit code after the default submit behavior
+        if(array_key_exists('submit', $form['actions'])) {        
+            $form['#submit'][] = 'submit_redirect_transcript';
+        }    
+    
+        if(in_array('administrator', $user->roles)) {
+            // Show the actual Submit button
+            $form['actions']['submit']['#access'] = TRUE;
+            // Show the comments box
+            $form['submitted']['comments']['#attributes'] = array('enabled' => '1');
+            if(array_key_exists('review', $form['actions'])) {
+                $form['actions']['review']['#access'] = FALSE;
+            }
+            // Check if it's the last page
+            if(!array_key_exists('next', $form['actions'])) {
+                $form['actions']['Return for Editing'] = array(
+                    '#type' => 'submit',
+                    '#value' => 'Return for Editing',
+                    '#submit' => array('edit_callback'),
+                );
+            }
         }
-        // Check if it's the last page
-        if(!array_key_exists('next', $form['actions'])) {
-            $form['actions']['Return for Editing'] = array(
-                '#type' => 'submit',
-                '#value' => 'Return for Editing',
-                '#submit' => array('edit_callback'),
-            );
+        elseif(in_array('authenticated user', $user->roles)) {
+            // Hide the actual submit button
+            $form['actions']['submit']['#access'] = FALSE;
+            // Make the comments box read-only
+            $form['submitted']['comments']['#attributes'] = array('disabled' => '1');
+            // Check if it's the last page and add a 'Submit for Review' button
+            if(!array_key_exists('next', $form['actions'])) {
+                $form['actions']['review'] = array(
+                    '#type' => 'submit',
+                    '#value' => 'Submit for Review',
+                    '#submit' => array('review_callback'),
+                );
+            }
         }
     }
-    elseif(in_array('authenticated user', $user->roles)) {
-        // Hide the actual submit button
-        $form['actions']['submit']['#access'] = FALSE;
-        // Make the comments box read-only
-        $form['submitted']['comments']['#attributes'] = array('disabled' => '1');
-        // Check if it's the last page and add a 'Submit for Review' button
-        if(!array_key_exists('next', $form['actions'])) {
-            $form['actions']['review'] = array(
-                '#type' => 'submit',
-                '#value' => 'Submit for Review',
-                '#submit' => array('review_callback'),
-            );
-        }
+    
+    elseif(strpos($form['#node']->title, 'Annotation') != FALSE) {        
+        $form['#submit'][] = 'submit_redirect_annotation';
     }
 }
 
@@ -850,39 +823,23 @@ function jplayer_mail($key, &$message, $params) {
  */
 function annotate_handler($form, &$form_state) {
     
-    // Get node ID
-    $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
-    $nid = $result->fetchField(0);
-    
-    // Get the audio file URL
-    $player_node = node_load($nid);
-    $audio_url = $player_node->field_audio[$player_node->language][0]['uri'];
-    
-    // Get the audio file corresponding to the audio URL
-    $result = db_query('SELECT * FROM {node} WHERE type = :type', array(':type' => 'audio_file'));
-    foreach($result as $record) {
-        $nid = $record->nid;
-        $file_node = node_load($nid);
-        if($file_node->field_remote_file_url[$file_node->language][0]['uri'] == $audio_url) {
-            break;
-        }
-    }
+    // Get the audio file node
+    $player_node = menu_get_object();
+    $audio_file = node_load($player_node->field_player_audio_file[$player_node->language][0]['target_id']);
         
-    // Get file name
-    $file_name = $file_node->title;
-    
     // Create new audio_player node with an associated webform
-    create_player_node('Annotator');
-    create_annotation_webform_node();
+    create_player_node('Annotator', $audio_file);
+    create_annotation_webform_node($audio_file->title);
     
     // Redirect to the annotator
-    drupal_goto('content/annotator');
+    $url = 'Annotator/' . $audio_file->nid;
+    drupal_goto($url);
 }
 
 /**
  * Create a new webform node for annotation
  */
-function create_annotation_webform_node() {
+function create_annotation_webform_node($file_name) {
     
     // Get controlled taxonomy terms
     $string = '';
@@ -895,10 +852,10 @@ function create_annotation_webform_node() {
     $node = new StdClass();
     $node->type = 'webform';
     node_object_prepare($node);
-    $node->title = 'Annotation Form';
+    $node->title = $file_name . ' Annotation Form';
     $node->language = LANGUAGE_NONE;
-    $node->body[LANGUAGE_NONE][0]['value'] = '';
-    $node->body[LANGUAGE_NONE][0]['format'] = 'full_html';
+    $node->body[$node->language][0]['value'] = '';
+    $node->body[$node->language][0]['format'] = 'full_html';
     
     /*global $user;
     $node->uid = $user->uid;*/
@@ -1056,7 +1013,7 @@ uctrl|Uncontrolled',
         'next_serial' => '1',
         'confirmation' => '',
         'confirmation_format' => 'filtered_html',
-        'redirect_url' => 'annotation/submitted',
+        'redirect_url' => '<none>',
         'status' => '1',
         'block' => '0',
         'allow_draft' => '0',
@@ -1100,7 +1057,7 @@ uctrl|Uncontrolled',
 /**
  * Steps to take after the annotation webform is submitted
  */
-function submit_redirect_annotation() {
+function submit_redirect_annotation($form, &$form_state) {
     
     // Get timestamp from the javascript file
     $cookie_name = 'timeinfo';
@@ -1117,29 +1074,18 @@ function submit_redirect_annotation() {
     $secs = sprintf('%02d', floor($timepoint % 60));
     $timestamp = $hours . ':' . $mins . ':' . $secs;
     
-     // Load the audio player and get the corresponding audio file node
-    $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Player'));
-    $nid = $result->fetchField(0);
+    // Load the audio player and get the corresponding audio file node
+    $player_node = menu_get_object();
+    $audio_file = node_load($player_node->field_player_audio_file[$player_node->language][0]['target_id']);
+          
+    // Get the relevant webform
+    $webform_node = $form['#node'];
     
-    // Get the audio file URL
-    $player_node = node_load($nid);
-    $audio_url = $player_node->field_audio[$player_node->language][0]['uri'];
-    
-    // Get the audio file corresponding to the audio URL
-    $result = db_query('SELECT * FROM {node} WHERE type = :type', array(':type' => 'audio_file'));
-    foreach($result as $record) {
-        $aid = $record->nid;
-        $file_node = node_load($aid);
-        if($file_node->field_remote_file_url[$file_node->language][0]['uri'] == $audio_url) {
-            break;
-        }
-    }
-        
-    // Get file name
-    $filename = $file_node->title;
+    // Get the author    
+    $creator = user_load($webform_node->uid);
     
     // Get the ID of the last complete submission
-    $result = db_query("SELECT MAX(sid) FROM {webform_submissions}", array(':val' => 0));
+    $result = db_query("SELECT * FROM {webform_submissions} WHERE nid = :nid", array(':nid' => $webform_node->nid));
     $sid = $result->fetchField(0);
     
     // Get the data of the last submission and save into an array
@@ -1170,28 +1116,31 @@ function submit_redirect_annotation() {
     }
     
     // Check if the annotation already exists; create one if not
-    $node_name = $filename . ' Annotation @ ' . $timestamp;
+    $node_name = $audio_file->title . ' Annotation @ ' . $timestamp;
     $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'annotation', ':title' => $node_name));
     $anode = $result->fetchField(0);
     if($anode == NULL) {
-        create_annotation_node($aid, $tid, $type, $timestamp);
+        create_annotation_node($audio_file, $tid, $type, $timestamp);
     }
     else {
         modify_annotation_node($anode, $tid, $type);
     }
     
     // Get node ID and delete the annotator player
-    $result1 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => 'Annotator'));
+    $title = 'Annotator: ' . $audio_file->title;
+    $result1 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => $title));
     $nid1 = $result1->fetchField(0);
     node_delete($nid1);
         
     // Get node ID and delete the annotation webform
-    $result2 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => 'Annotation Form'));
+    $title = $audio_file->title . ' Annotation Form';
+    $result2 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $title));
     $nid2 = $result2->fetchField(0);
     node_delete($nid2);        
         
     drupal_set_message(t('The annotation has been added!'));
-    drupal_goto('content/player');
+    $redirect_url = 'Player/' . $audio_file->nid;
+    drupal_goto($redirect_url);
 }
 
 /**
@@ -1232,30 +1181,21 @@ function get_tid($term_name, $vocabulary) {
         $arr_terms = array_values($arr_terms);
         $tid = $arr_terms[0]->tid;
     }
-    /*else {
-        $vobj = taxonomy_vocabulary_machine_name_load($vocabulary);
-        $term = new stdClass();
-        $term->name = $term_name;
-        $term->vid = $vobj->vid;
-        taxonomy_term_save($term);
-        $tid = $term->tid;
-    }*/
     return $tid;
 }
 
 /**
  * Create a new node for the annotation
  */
-function create_annotation_node($aid, $tid, $type, $timestamp) {
+function create_annotation_node($audio_file, $tid, $type, $timestamp) {
     // Basic node creation
     $node = new stdClass();
     $node->type = 'annotation';
     $node->language = LANGUAGE_NONE;
     node_object_prepare($node);
     
-    $temp_node = node_load($aid);
-    $title = $temp_node->field_remote_file_url[$temp_node->language][0]['filename'];
-    $title = str_replace('%20', ' ', $title);
+    
+    $title = $audio_file->title;
     $node->title = $title . ' Annotation @ ' . $timestamp;
     
     $node->status = 1;
@@ -1263,7 +1203,7 @@ function create_annotation_node($aid, $tid, $type, $timestamp) {
     $node->comment = 1;    
     
     // Add entity reference to audio
-    $node->field_annotation_audio_file[$node->language][0]['target_id'] = $aid;
+    $node->field_annotation_audio_file[$node->language][0]['target_id'] = $audio_file->nid;
     
     // Add annotations
     if($type == 'controlled') {
