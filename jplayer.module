@@ -230,9 +230,16 @@ function transcribe_handler($form, &$form_state) {
     $player_node = menu_get_object();
     $audio_file = node_load($player_node->field_player_audio_file[$player_node->language][0]['target_id']);
     
-    // Create new audio_player node with an associated webform
-    create_player_node('Transcriber', $audio_file);
-    create_transcript_webform_node($audio_file->title);
+    // Check if an associated transcriber already exists
+    $title = 'Transcriber: ' . $audio_file->title;
+    $node_title = db_query('SELECT title FROM {node} WHERE title = :title', array(':title' => $title))->fetchField();
+    
+    // If the node doesn't already exist
+    if(empty($node_title)) {    
+        // Create new audio_player node with an associated webform
+        create_player_node('Transcriber', $audio_file);
+        create_transcript_webform_node($audio_file->title);
+    }
     
     // Redirect to the transcriber
     $url = 'Transcriber/' . $audio_file->nid;
@@ -878,10 +885,17 @@ function annotate_handler($form, &$form_state) {
     // Get the audio file node
     $player_node = menu_get_object();
     $audio_file = node_load($player_node->field_player_audio_file[$player_node->language][0]['target_id']);
-        
-    // Create new audio_player node with an associated webform
-    create_player_node('Annotator', $audio_file);
-    create_annotation_webform_node($audio_file->title);
+    
+    // Check if an associated annotator already exists
+    $title = 'Annotator: ' . $audio_file->title;
+    $node_title = db_query('SELECT title FROM {node} WHERE title = :title', array(':title' => $title))->fetchField();
+    
+    // If the node doesn't already exist
+    if(empty($node_title)) { 
+        // Create new audio_player node with an associated webform
+        create_player_node('Annotator', $audio_file);
+        create_annotation_webform_node($audio_file->title);
+    }
     
     // Redirect to the annotator
     $url = 'Annotator/' . $audio_file->nid;
