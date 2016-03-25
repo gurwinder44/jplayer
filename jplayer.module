@@ -84,8 +84,7 @@ function jplayer_init() {
 function play_callback($nid) {
     $audio_node = node_load($nid);
     if($node = menu_get_object()) {
-        $url = 'Player/' . $nid;
-        drupal_goto($url);
+        // Do nothing
     }
     else {
         create_player_node('Player', $audio_node);
@@ -127,12 +126,56 @@ function create_player_node($content, $audio_file = NULL) {
  * Implements hook_block_info().
  */
 function jplayer_block_info()
-{    
+{   
+    global $option;
+    $option = 'none';
     $blocks['options'] = array(
         'info' => t('Options'),
         'cache' => DRUPAL_CACHE_GLOBAL,
     );    
     return $blocks;
+}
+
+/**
+ * Implements hook_block_info_alter().
+ */
+function jplayer_block_info_alter(&$blocks, $theme, $code_blocks) {
+
+    if($player_node = menu_get_object()) {
+        $transcript_form_exists = 0;
+        $annotation_form_exists = 0;
+        
+        if($player_node->type == 'audio_player') {
+            // Get the audio file and webform info
+            $audio_file = node_load($player_node->field_player_audio_file[$player_node->language][0]['target_id']);
+            
+            // Check if it's an annotation or transcription form
+            $t_title = $audio_file->title . ' Transcript Form';
+            $a_title = $audio_file->title . ' Annotation Form';
+            $transcript_form_exists = db_query('SELECT 1 FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $t_title))->fetchField();
+            $annotation_form_exists = db_query('SELECT 1 FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $a_title))->fetchField();
+
+            // Alter block configuration
+            if($transcript_form_exists) {                
+                $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $t_title));
+                $webform_nid = $result->fetchField(0);
+                $delta = 'client-block-' . $webform_nid;
+                $blocks['webform'][$delta]['status'] = TRUE;
+                $blocks['webform'][$delta]['visibility'] = 1;
+                $blocks['webform'][$delta]['region'] = 'content';
+                $blocks['webform'][$delta]['pages'] = 'Transcriber/' . $audio_file->nid;
+            }
+            if($annotation_form_exists) {                
+                $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $a_title));
+                $webform_nid = $result->fetchField(0);
+                $delta = 'client-block-' . $webform_nid;
+                $blocks['webform'][$delta]['status'] = TRUE;
+                $blocks['webform'][$delta]['visibility'] = 1;
+                $blocks['webform'][$delta]['region'] = 'content';
+                $blocks['webform'][$delta]['pages'] = 'Annotator/' . $audio_file->nid;
+            }
+        }
+    }
 }
 
 /**
@@ -165,6 +208,15 @@ function getOptionsForm() {
         '#submit' => array('annotate_handler'),
     );
     return $form;
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function jplayer_node_delete($node) {
+    if($node->type == 'webform') {
+        // Delete the associated blocks from database
+    }
 }
 
 /*************************TRANSCRIBER FUNCTIONS********************************/
@@ -356,7 +408,7 @@ function create_transcript_webform_node($file_name) {
         'confirmation_format' => 'filtered_html',
         'redirect_url' => '<none>',
         'status' => '1',
-        'block' => '0',
+        'block' => '1',
         'teaser' => '0',
         'allow_draft' => '1',
         'auto_save' => '0',
@@ -1015,7 +1067,7 @@ uctrl|Uncontrolled',
         'confirmation_format' => 'filtered_html',
         'redirect_url' => '<none>',
         'status' => '1',
-        'block' => '0',
+        'block' => '1',
         'allow_draft' => '0',
         'auto_save' => '0',
         'submit_notice' => '1',
