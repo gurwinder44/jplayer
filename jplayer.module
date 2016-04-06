@@ -470,20 +470,21 @@ function jplayer_webform_submission_update($node, $submission) {
 function submit_redirect_transcript($form, &$form_state) {
 
     global $user;
-    // Load the audio player and get the corresponding audio file node
-    $player_node = menu_get_object();
-    $audio_file = node_load($player_node->field_player_audio_file[$player_node->language][0]['target_id']);
-          
+  
     // Get the relevant webform
     $webform_node = $form['#node'];
+    
+    // Get the corresponding audio file node
+    $title = str_replace(' Transcript Form', '', $webform_node->title);
+    $audio_file = node_load(db_query('SELECT * FROM {node} WHERE title = :title', array(':title' => $title))->fetchField(0));
     
     // Get the author    
     $creator = user_load($webform_node->uid);
     
-    // Get the ID of the last complete submission
+    // Get the ID of the last complete submission (there should only be 1)
     $result = db_query("SELECT * FROM {webform_submissions} WHERE nid = :nid", array(':nid' => $webform_node->nid));
     $sid = $result->fetchField(0);
-    // Get the data of the last submission and save into an array
+    // Get the data of the submission and save into an array
     $result = db_query("SELECT data FROM {webform_submitted_data} WHERE sid = :sid", array(':sid' => $sid));
     $raw_data = array();
     $segment = 0;
@@ -714,12 +715,17 @@ function jplayer_form_webform_client_form_alter(&$form, &$form_state) {
     
     // If it's a transcript form
     if(strpos($form['#node']->title, 'Transcript') != FALSE) {
+        
         // If there's a submit button, run custom submit code after the default submit behavior
         if(array_key_exists('submit', $form['actions'])) {        
-            $form['#submit'][] = 'submit_redirect_transcript';
+            $form['actions']['submit']['#submit'] = array(
+                0 => 'webform_client_form_pages',
+                1 => 'webform_client_form_submit',
+                2 => 'submit_redirect_transcript',
+            );
         }    
     
-        if(in_array('administrator', $user->roles)) {
+        if(in_array('quality control', $user->roles)) {
             // Show the actual Submit button
             $form['actions']['submit']['#access'] = TRUE;
             // Show the comments box
@@ -805,7 +811,7 @@ function review_callback($form, &$form_state) {
     // Get the transcriber player node
     $player_node = menu_get_object();
     $file_node = node_load($player_node->field_player_audio_file[$player_node->language][0]['target_id']);
-    $redirect_url = 'Player/' . $pfile_node->nid;
+    $redirect_url = 'Player/' . $file_node->nid;
     drupal_goto($redirect_url);
 }
 
@@ -874,6 +880,19 @@ function jplayer_mail($key, &$message, $params) {
     $message['subject'] = $params['subject'];
     $message['body'] = $params['body'];    
 }
+
+/**
+ * Implements hook_webform_submission_load().
+ *
+function jplayer_webform_submission_load(&$submissions) {
+    
+    // Load the transcriber audio player node
+    $submission = reset($submissions);
+    $webform_node = node_load($submission->nid);
+    $transcriber_title = 'Transcriber: ' . str_replace(' Transcript Form', '', $webform_node->title);
+    //$transcriber_node = node_load(db_query('SELECT * FROM {node} WHERE title = :title', array(':title' => $transcriber_title))->fetchField(0));
+    
+}*/
 
 /*************************ANNOTATOR FUNCTIONS**********************************/
 

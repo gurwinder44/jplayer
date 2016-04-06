@@ -4,7 +4,6 @@ package = Media
 core = 7.x
 dependencies[] = file
 dependencies[] = webform
-dependencies[] = ctools
 dependencies[] = remote_file_source
 configure = admin/config/media/jplayer
 
