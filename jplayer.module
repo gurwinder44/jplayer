@@ -113,6 +113,13 @@ function create_player_node($content, $audio_file = NULL) {
     $alias = $content . '/' . $audio_file->nid;
     $node->field_audio[$node->language][0] = $audio_file->field_remote_file_url[$audio_file->language][0];
     $node->field_player_audio_file[$node->language][0]['target_id'] = $audio_file->nid;
+    
+    // Add an entity reference to the webform that was created for the transcript
+    if($content == 'Transcriber') {
+        $title = $audio_file->title . ' Transcript Form';
+        $transcriber_player_nid = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $title))->fetchField();
+        $node->field_transcript_form[$node->language][0]['target_id'] = $transcriber_player_nid;
+    }
        
     $node->path = array('alias' => $alias);
     
@@ -237,8 +244,8 @@ function transcribe_handler($form, &$form_state) {
     // If the node doesn't already exist
     if(empty($node_title)) {    
         // Create new audio_player node with an associated webform
-        create_player_node('Transcriber', $audio_file);
         create_transcript_webform_node($audio_file->title);
+        create_player_node('Transcriber', $audio_file);        
     }
     
     // Redirect to the transcriber
