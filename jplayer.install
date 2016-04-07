@@ -60,6 +60,12 @@ function jplayer_requirements($phase) {
  */
 function jplayer_uninstall() {
   variable_del('jplayer_access_time');
+  
+  // Remove the Views block created by this module; the view itself is removed when the module is disabled
+  $num_deleted = db_delete('block')
+          ->condition('delta', 'transcript_edit-block')
+          ->execute();
+  
 }
 
 /**

@@ -148,6 +148,7 @@ function jplayer_block_info()
  */
 function jplayer_block_info_alter(&$blocks, $theme, $code_blocks) {
 
+    // Change the region of the Views block
     if(array_key_exists('transcript_edit-block', $blocks['views'])) {
         $blocks['views']['transcript_edit-block']['status'] = TRUE;
         $blocks['views']['transcript_edit-block']['region'] = 'content';
@@ -170,8 +171,7 @@ function jplayer_block_info_alter(&$blocks, $theme, $code_blocks) {
 
             // Alter block configuration
             if($transcript_form_exists) {                
-                $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $t_title));
-                $webform_nid = $result->fetchField(0);
+                $webform_nid = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $t_title))->fetchField();
                 $delta = 'client-block-' . $webform_nid;
                 $blocks['webform'][$delta]['status'] = TRUE;
                 $blocks['webform'][$delta]['visibility'] = 1;
@@ -179,8 +179,7 @@ function jplayer_block_info_alter(&$blocks, $theme, $code_blocks) {
                 $blocks['webform'][$delta]['pages'] = 'Transcriber/' . $audio_file->nid;
             }
             if($annotation_form_exists) {                
-                $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $a_title));
-                $webform_nid = $result->fetchField(0);
+                $webform_nid = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $a_title))->fetchField;
                 $delta = 'client-block-' . $webform_nid;
                 $blocks['webform'][$delta]['status'] = TRUE;
                 $blocks['webform'][$delta]['visibility'] = 1;
@@ -483,8 +482,7 @@ function submit_redirect_transcript($form, &$form_state) {
     $creator = user_load($webform_node->uid);
     
     // Get the ID of the last complete submission (there should only be 1)
-    $result = db_query("SELECT * FROM {webform_submissions} WHERE nid = :nid", array(':nid' => $webform_node->nid));
-    $sid = $result->fetchField(0);
+    $sid = db_query("SELECT sid FROM {webform_submissions} WHERE nid = :nid", array(':nid' => $webform_node->nid))->fetchField();
     // Get the data of the submission and save into an array
     $result = db_query("SELECT data FROM {webform_submitted_data} WHERE sid = :sid", array(':sid' => $sid));
     $raw_data = array();
@@ -520,14 +518,12 @@ function submit_redirect_transcript($form, &$form_state) {
         
         // Get node ID and delete the transcriber player
         $title = 'Transcriber: ' . $audio_file->title;
-        $result1 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => $title));
-        $nid1 = $result1->fetchField(0);
+        $nid1 = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => $title))->fetchField();
         node_delete($nid1);
         
         // Get node ID and delete the webform
         $title = $audio_file->title . ' Transcript Form';
-        $result2 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $title));
-        $nid2 = $result2->fetchField(0);
+        $nid2 = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $title))->fetchField();
         node_delete($nid2);
         
         drupal_set_message(t('Your data has been saved'));
@@ -537,14 +533,12 @@ function submit_redirect_transcript($form, &$form_state) {
     else {
         // Get node ID and delete the transcriber player
         $title = 'Transcriber: ' . $audio_file->title;
-        $result1 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => $title));
-        $nid1 = $result1->fetchField(0);
+        $nid1 = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => $title))->fetchField();
         node_delete($nid1);
         
         // Get node ID and delete the transcript webform
         $title = $file_name . ' Transcript Form';
-        $result2 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $title));
-        $nid2 = $result2->fetchField(0);
+        $nid2 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $title))->fetchField();
         node_delete($nid2);
         
         drupal_set_message(t('Failed to save data'), 'error');
@@ -788,8 +782,7 @@ function review_callback($form, &$form_state) {
     
     // Get all the users who are reviewers
     $uid = array();
-    $result = db_query('SELECT * FROM {role} WHERE name = :name', array(':name' => 'administrator'));
-    $rid = $result->fetchField(0);
+    $rid = db_query('SELECT rid FROM {role} WHERE name = :name', array(':name' => 'administrator'))->fetchField();
     $result = db_query('SELECT * FROM {users_roles} WHERE rid = :rid', array(':rid' => $rid));
     foreach($result as $record) {
         $uid[] = $record->uid;
@@ -1171,8 +1164,7 @@ function submit_redirect_annotation($form, &$form_state) {
     $creator = user_load($webform_node->uid);
     
     // Get the ID of the last complete submission
-    $result = db_query("SELECT * FROM {webform_submissions} WHERE nid = :nid", array(':nid' => $webform_node->nid));
-    $sid = $result->fetchField(0);
+    $sid = db_query("SELECT sid FROM {webform_submissions} WHERE nid = :nid", array(':nid' => $webform_node->nid))->fetchField();
     
     // Get the data of the last submission and save into an array
     $result = db_query("SELECT data FROM {webform_submitted_data} WHERE sid = :sid", array(':sid' => $sid));
@@ -1203,8 +1195,7 @@ function submit_redirect_annotation($form, &$form_state) {
     
     // Check if the annotation already exists; create one if not
     $node_name = $audio_file->title . ' Annotation @ ' . $timestamp;
-    $result = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'annotation', ':title' => $node_name));
-    $anode = $result->fetchField(0);
+    $anode = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'annotation', ':title' => $node_name))->fetchField();
     if($anode == NULL) {
         create_annotation_node($audio_file, $tid, $type, $timestamp);
     }
@@ -1214,14 +1205,12 @@ function submit_redirect_annotation($form, &$form_state) {
     
     // Get node ID and delete the annotator player
     $title = 'Annotator: ' . $audio_file->title;
-    $result1 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => $title));
-    $nid1 = $result1->fetchField(0);
+    $nid1 = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => $title))->fetchField();
     node_delete($nid1);
         
     // Get node ID and delete the annotation webform
     $title = $audio_file->title . ' Annotation Form';
-    $result2 = db_query('SELECT * FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $title));
-    $nid2 = $result2->fetchField(0);
+    $nid2 = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $title))=>fetchField();
     node_delete($nid2);        
         
     drupal_set_message(t('The annotation has been added!'));
