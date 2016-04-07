@@ -1,22 +1,26 @@
 <?php
+/**
+ * @file
+ * Define a view to display a jplayer instance on transcript webform edit pages
+ */
 
 /**
  * Implements hook_views_default_views().
  */
 function jplayer_views_default_views() {
     $view = new view();
-    $view->name = 'new_transcriber';
+    $view->name = 'transcript_edit';
     $view->description = '';
     $view->tag = 'default';
     $view->base_table = 'node';
-    $view->human_name = 'Test View';
+    $view->human_name = 'Transcript Edit';
     $view->core = 7;
     $view->api_version = '3.0';
     $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
 
     /* Display: Master */
     $handler = $view->new_display('default', 'Master', 'default');
-    $handler->display->display_options['title'] = 'View: transcriber';
+    $handler->display->display_options['title'] = 'Transcript Edit';
     $handler->display->display_options['use_more_always'] = FALSE;
     $handler->display->display_options['access']['type'] = 'perm';
     $handler->display->display_options['cache']['type'] = 'none';
@@ -27,7 +31,10 @@ function jplayer_views_default_views() {
     $handler->display->display_options['style_plugin'] = 'default';
     $handler->display->display_options['row_plugin'] = 'node';
     $handler->display->display_options['row_options']['view_mode'] = 'full';
-    $handler->display->display_options['row_options']['links'] = FALSE;
+    /* Relationship: Entity Reference: Referenced Entity */
+    $handler->display->display_options['relationships']['field_transcript_form_target_id']['id'] = 'field_transcript_form_target_id';
+    $handler->display->display_options['relationships']['field_transcript_form_target_id']['table'] = 'field_data_field_transcript_form';
+    $handler->display->display_options['relationships']['field_transcript_form_target_id']['field'] = 'field_transcript_form_target_id';
     /* Field: Content: Title */
     $handler->display->display_options['fields']['title']['id'] = 'title';
     $handler->display->display_options['fields']['title']['table'] = 'node';
@@ -40,6 +47,16 @@ function jplayer_views_default_views() {
     $handler->display->display_options['sorts']['created']['table'] = 'node';
     $handler->display->display_options['sorts']['created']['field'] = 'created';
     $handler->display->display_options['sorts']['created']['order'] = 'DESC';
+    /* Contextual filter: Content: Nid */
+    $handler->display->display_options['arguments']['nid']['id'] = 'nid';
+    $handler->display->display_options['arguments']['nid']['table'] = 'node';
+    $handler->display->display_options['arguments']['nid']['field'] = 'nid';
+    $handler->display->display_options['arguments']['nid']['relationship'] = 'field_transcript_form_target_id';
+    $handler->display->display_options['arguments']['nid']['default_action'] = 'default';
+    $handler->display->display_options['arguments']['nid']['default_argument_type'] = 'node';
+    $handler->display->display_options['arguments']['nid']['summary']['number_of_records'] = '0';
+    $handler->display->display_options['arguments']['nid']['summary']['format'] = 'default_summary';
+    $handler->display->display_options['arguments']['nid']['summary_options']['items_per_page'] = '25';
     /* Filter criterion: Content: Published */
     $handler->display->display_options['filters']['status']['id'] = 'status';
     $handler->display->display_options['filters']['status']['table'] = 'node';
@@ -54,16 +71,24 @@ function jplayer_views_default_views() {
     $handler->display->display_options['filters']['type']['value'] = array(
         'audio_player' => 'audio_player',
     );
-    /* Filter criterion: Content: Title */
-    $handler->display->display_options['filters']['title']['id'] = 'title';
-    $handler->display->display_options['filters']['title']['table'] = 'node';
-    $handler->display->display_options['filters']['title']['field'] = 'title';
-    $handler->display->display_options['filters']['title']['value'] = 'Transcriber: ATLSP(INF018)1 12 Perception.mp3';
 
     /* Display: Block */
     $handler = $view->new_display('block', 'Block', 'block');
+    $translatables['transcript_edit'] = array(
+        t('Master'),
+        t('Transcript Edit'),
+        t('more'),
+        t('Apply'),
+        t('Reset'),
+        t('Sort by'),
+        t('Asc'),
+        t('Desc'),
+        t('Content entity referenced from field_transcript_form'),
+        t('All'),
+        t('Block'),
+    );
     
     $views[$view->name] = $view;
-    //return $views;
+    return $views;
 }
 
