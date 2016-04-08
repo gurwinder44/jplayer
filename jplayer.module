@@ -22,14 +22,6 @@ function jplayer_menu() {
     'file' => 'includes/jplayer.admin.inc',
   );
   
-  $items['Player/%'] = array(
-      'title' => t('Player'),
-      'page callback' => 'play_callback',
-      'page arguments' => array(1),
-      'access callback' => TRUE,
-      'type' => MENU_CALLBACK,
-  );
-  
   return $items;
 }
 
@@ -67,28 +59,12 @@ function jplayer_init() {
     if(drupal_match_path($url, 'Transcriber/*')) {
         $action = 0;        
     }
-    if(drupal_match_path($url, 'Player/*')) {
-        $action = 1;
-    }
-    if(request_path() == 'content/annotator') {
+    if(request_path() == 'Annotator/*') {
         $action = 1;
     }
     drupal_add_js(array('jplayer' => array(
             'action' => $action,
     )), 'setting');
-}
-
-/**
- * Function to create a player when a link is clicked in a view
- */
-function play_callback($nid) {
-    $audio_node = node_load($nid);
-    if($node = menu_get_object()) {
-        // Do nothing
-    }
-    else {
-        create_player_node('Player', $audio_node);
-    }
 }
 
 /**
@@ -110,15 +86,18 @@ function create_player_node($content, $audio_file = NULL) {
     $node->promote = 0;
     $node->comment = 1;
     
-    $alias = $content . '/' . $audio_file->nid;
     $node->field_audio[$node->language][0] = $audio_file->field_remote_file_url[$audio_file->language][0];
     $node->field_player_audio_file[$node->language][0]['target_id'] = $audio_file->nid;
     
     // Add an entity reference to the webform that was created for the transcript
-    if($content == 'Transcriber') {
+    if($content == 'Transcribing') {
+        $alias = 'Transcriber/' . $audio_file->nid;
         $title = $audio_file->title . ' Transcript Form';
         $transcriber_player_nid = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $title))->fetchField();
         $node->field_transcript_form[$node->language][0]['target_id'] = $transcriber_player_nid;
+    }
+    elseif($content == 'Annotating') {
+        $alias = 'Annotator/' . $audio_file->nid;
     }
        
     $node->path = array('alias' => $alias);
@@ -155,13 +134,11 @@ function jplayer_block_info_alter(&$blocks, $theme, $code_blocks) {
     }
     
     // Webform blocks
-    if($player_node = menu_get_object()) {
+    if($audio_file = menu_get_object()) {
         $transcript_form_exists = 0;
         $annotation_form_exists = 0;
         
-        if($player_node->type == 'audio_player') {
-            // Get the audio file and webform info
-            $audio_file = node_load($player_node->field_player_audio_file[$player_node->language][0]['target_id']);
+        if($audio_file->type == 'audio_file') {
             
             // Check if it's an annotation or transcription form
             $t_title = $audio_file->title . ' Transcript Form';
@@ -179,7 +156,7 @@ function jplayer_block_info_alter(&$blocks, $theme, $code_blocks) {
                 $blocks['webform'][$delta]['pages'] = 'Transcriber/' . $audio_file->nid;
             }
             if($annotation_form_exists) {                
-                $webform_nid = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $a_title))->fetchField;
+                $webform_nid = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $a_title))->fetchField();
                 $delta = 'client-block-' . $webform_nid;
                 $blocks['webform'][$delta]['status'] = TRUE;
                 $blocks['webform'][$delta]['visibility'] = 1;
@@ -239,18 +216,17 @@ function jplayer_node_delete($node) {
 function transcribe_handler($form, &$form_state) {
     
     // Get the audio file node
-    $player_node = menu_get_object();
-    $audio_file = node_load($player_node->field_player_audio_file[$player_node->language][0]['target_id']);
+    $audio_file = menu_get_object();
     
     // Check if an associated transcriber already exists
-    $title = 'Transcriber: ' . $audio_file->title;
+    $title = 'Transcribing: ' . $audio_file->title;
     $node_title = db_query('SELECT title FROM {node} WHERE title = :title', array(':title' => $title))->fetchField();
     
     // If the node doesn't already exist
     if(empty($node_title)) {    
         // Create new audio_player node with an associated webform
         create_transcript_webform_node($audio_file->title);
-        create_player_node('Transcriber', $audio_file);        
+        create_player_node('Transcribing', $audio_file);        
     }
     
     // Redirect to the transcriber
@@ -517,7 +493,7 @@ function submit_redirect_transcript($form, &$form_state) {
         drupal_mail('jplayer', $key, $to, $language, $params, $from, TRUE);
         
         // Get node ID and delete the transcriber player
-        $title = 'Transcriber: ' . $audio_file->title;
+        $title = 'Transcribing: ' . $audio_file->title;
         $nid1 = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => $title))->fetchField();
         node_delete($nid1);
         
@@ -527,12 +503,12 @@ function submit_redirect_transcript($form, &$form_state) {
         node_delete($nid2);
         
         drupal_set_message(t('Your data has been saved'));
-        $redirect_url = 'Player/' . $audio_file->nid;
+        $redirect_url = 'node/' . $audio_file->nid;
         drupal_goto($redirect_url);
     }
     else {
         // Get node ID and delete the transcriber player
-        $title = 'Transcriber: ' . $audio_file->title;
+        $title = 'Transcribing: ' . $audio_file->title;
         $nid1 = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => $title))->fetchField();
         node_delete($nid1);
         
@@ -542,7 +518,7 @@ function submit_redirect_transcript($form, &$form_state) {
         node_delete($nid2);
         
         drupal_set_message(t('Failed to save data'), 'error');
-        $redirect_url = 'Player/' . $audio_file->nid;
+        $redirect_url = 'node/' . $audio_file->nid;
         drupal_goto($redirect_url);
     }
 }
@@ -805,7 +781,7 @@ function review_callback($form, &$form_state) {
     // Get the transcriber player node
     $title = str_replace(' Transcript Form', '', $node->title);
     $file_node = node_load(db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_file', ':title' => $title))->fetchField());
-    $redirect_url = 'Player/' . $file_node->nid;
+    $redirect_url = 'node/' . $file_node->nid;
     drupal_goto($redirect_url);
 }
 
@@ -839,7 +815,7 @@ function edit_callback($form, &$form_state) {
     // Get the transcriber player node
     $title = str_replace(' Transcript Form', '', $node->title);
     $file_node = node_load(db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_file', ':title' => $title))->fetchField());
-    $redirect_url = 'Player/' . $file_node->nid;
+    $redirect_url = 'node/' . $file_node->nid;
     drupal_goto($redirect_url);
 }
 
@@ -883,7 +859,7 @@ function jplayer_webform_submission_load(&$submissions) {
     // Load the transcriber audio player node
     $submission = reset($submissions);
     $webform_node = node_load($submission->nid);
-    $transcriber_title = 'Transcriber: ' . str_replace(' Transcript Form', '', $webform_node->title);
+    $transcriber_title = 'Transcribing: ' . str_replace(' Transcript Form', '', $webform_node->title);
     //$transcriber_node = node_load(db_query('SELECT * FROM {node} WHERE title = :title', array(':title' => $transcriber_title))->fetchField(0));
     
 }*/
@@ -896,17 +872,16 @@ function jplayer_webform_submission_load(&$submissions) {
 function annotate_handler($form, &$form_state) {
     
     // Get the audio file node
-    $player_node = menu_get_object();
-    $audio_file = node_load($player_node->field_player_audio_file[$player_node->language][0]['target_id']);
+    $audio_file = menu_get_object();
     
     // Check if an associated annotator already exists
-    $title = 'Annotator: ' . $audio_file->title;
+    $title = 'Annotating: ' . $audio_file->title;
     $node_title = db_query('SELECT title FROM {node} WHERE title = :title', array(':title' => $title))->fetchField();
     
     // If the node doesn't already exist
     if(empty($node_title)) { 
         // Create new audio_player node with an associated webform
-        create_player_node('Annotator', $audio_file);
+        create_player_node('Annotating', $audio_file);
         create_annotation_webform_node($audio_file->title);
     }
     
@@ -1157,8 +1132,8 @@ function submit_redirect_annotation($form, &$form_state) {
     $webform_node = $form['#node'];
     
     // Load the audio player and get the corresponding audio file node
-    $title = str_replace(' Transcript Form', '', $webform_node->title);
-    $file_node = node_load(db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_file', ':title' => $title))->fetchField());
+    $title = str_replace(' Annotation Form', '', $webform_node->title);
+    $audio_file = node_load(db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_file', ':title' => $title))->fetchField());
     
     // Get the author    
     $creator = user_load($webform_node->uid);
@@ -1204,17 +1179,17 @@ function submit_redirect_annotation($form, &$form_state) {
     }
     
     // Get node ID and delete the annotator player
-    $title = 'Annotator: ' . $audio_file->title;
+    $title = 'Annotating: ' . $audio_file->title;
     $nid1 = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'audio_player', ':title' => $title))->fetchField();
     node_delete($nid1);
         
     // Get node ID and delete the annotation webform
     $title = $audio_file->title . ' Annotation Form';
-    $nid2 = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $title))=>fetchField();
+    $nid2 = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'webform', ':title' => $title))->fetchField();
     node_delete($nid2);        
         
     drupal_set_message(t('The annotation has been added!'));
-    $redirect_url = 'Player/' . $audio_file->nid;
+    $redirect_url = 'node/' . $audio_file->nid;
     drupal_goto($redirect_url);
 }
 
