@@ -281,7 +281,8 @@ var atime;
                 }
                 startTime = stopTime - 5;
                 document.getElementById("jp-segment").innerHTML = "Now playing: SEGMENT "+segment;
-                return false;
+                $("*").jPlayer("play", startTime);
+                //return false;
           });
           
           $(".jp-previous").click(function() {
@@ -295,8 +296,50 @@ var atime;
                 }
                 startTime = stopTime - 5;
                 document.getElementById("jp-segment").innerHTML = "Now playing: SEGMENT "+segment;
-                return false;
-          });        
+                $("*").jPlayer("play", startTime);
+                //return false;
+          });
+          
+          // Keyboard shortcuts to replay, next or previous
+          $(window).keydown(function(e) {
+              switch(e.keyCode) {
+                  case 37: //Left arrow
+                      //Previous segment
+                      if(stopTime <= 5) {
+                        stopTime = 5;
+                        segment = 1;
+                      }
+                      else {
+                        stopTime = stopTime - 5;
+                        segment--;
+                      }
+                      startTime = stopTime - 5;
+                      document.getElementById("jp-segment").innerHTML = "Now playing: SEGMENT "+segment;
+                      $("*").jPlayer("play", startTime);
+                      break;
+                  case 38: //Up arrow
+                      break;
+                  case 39: //Right arrow
+                      //Next segment
+                      if(stopTime > songDuration) {
+                        stopTime = 5;
+                        segment = 1;
+                      }
+                      else {
+                        stopTime = stopTime + 5;
+                        segment++;
+                      }
+                      startTime = stopTime - 5;
+                      document.getElementById("jp-segment").innerHTML = "Now playing: SEGMENT "+segment;
+                      $("*").jPlayer("play", startTime);
+                      break;
+                  case 40: //Down arrow
+                      e.preventDefault();
+                      //Replay
+                      $("*").jPlayer("play", startTime);
+                      break;
+              }
+          });          
       });
     }
   };
