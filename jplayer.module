@@ -131,6 +131,7 @@ function jplayer_block_info_alter(&$blocks, $theme, $code_blocks) {
     if(array_key_exists('transcript_edit-block', $blocks['views'])) {
         $blocks['views']['transcript_edit-block']['status'] = TRUE;
         $blocks['views']['transcript_edit-block']['region'] = 'content';
+        $blocks['views']['transcript_edit-block']['pages'] = 'node';
     }
     
     // Webform blocks

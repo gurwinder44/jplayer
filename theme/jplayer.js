@@ -7,6 +7,7 @@ var flag = 0;
 var songDuration;
 var segments;
 var stopTime = 5;
+var startTime = 0;
 var head;
 var segment = 1;
 var action = 1;
@@ -106,12 +107,6 @@ var atime;
                   stopTime = stopTime + 5;
               }
           });*/
-                $(player).bind($.jPlayer.event.play, function(event) {
-                    if(event.jPlayer.status.currentTime > stopTime) {
-                        $(this).jPlayer("pause");
-                        stopTime = stopTime + 5;
-                    }
-                });
           
          
         }
@@ -185,59 +180,30 @@ var atime;
           });
           
           
-            $(player).bind($.jPlayer.event.play, function(event) {
-                var startTime;
-                var duration = event.jPlayer.status.duration;                
-                if(flag == 1) {
-                    flag = 0;
-                    if(stopTime > duration) {
-                        stopTime = 5;
-                        segment = 1;
-                    }
-                    else {
-                        stopTime = stopTime + 5;
-                        segment++;
-                    }
-                }
-                else if(flag == 2) {
-                    flag = 0;
-                    if(stopTime < 5) {
-                        stopTime = 5;
-                        segment = 1;
-                    }
-                    else {
-                        stopTime = stopTime - 5;
-                        segment--;
-                    }
-                }
-                startTime = stopTime - 5;
+            $(player).bind($.jPlayer.event.play, function() {
                 $(this).jPlayer("play", startTime);
-                document.getElementById("jp-segment").innerHTML = "Now playing: SEGMENT "+segment;
-            
+                if(startTime == 0) {
+                    document.getElementById("jp-segment").innerHTML = "Now playing: SEGMENT "+segment;
+                }
             });
           
           
           $(player).bind($.jPlayer.event.pause, function() {
-              if(flag == 0) {
-                  stopTime = stopTime - 5;
-                  /*startTime = stopTime - 5;
-                  $(this).jPlayer("pause", startTime);*/
-              }          
+                stopTime = stopTime - 5;
           });
           
           // Pause after every 5 seconds
           $(player).bind($.jPlayer.event.timeupdate, function(event) {
-              if(event.jPlayer.status.currentTime > stopTime) {
-                  //stopTime = stopTime - 5;                  
+              if(event.jPlayer.status.currentTime > stopTime) {             
                   stopTime = stopTime + 5;
                   $(this).jPlayer("pause");
-              }          
+              }
           });
             }
             
             else {
                 // Normal player or annotator
-                 // Initialise playlist player
+                // Initialise playlist player
           $(player).jPlayer({
             ready: function() {
               Drupal.jPlayer.setFiles(wrapper, player, 0, playerSettings.autoplay);
@@ -303,34 +269,34 @@ var atime;
             
           }
           
-          // Next
-          $(wrapper).find('.jp-next').click(function() {
-            /*$(this).blur();
-            Drupal.jPlayer.next(wrapper, player);
-            return false;*/
-            /*var startTime;
-            stopTime = stopTime + 5;
-            startTime = stopTime - 5;*/
-            flag = 1;
-            return false;
+          // Update segment info when the NEXT or PREVIOUS buttons are clicked
+          $(".jp-next").click(function() {              
+                if(stopTime > songDuration) {
+                    stopTime = 5;
+                    segment = 1;
+                }
+                else {
+                    stopTime = stopTime + 5;
+                    segment++;
+                }
+                startTime = stopTime - 5;
+                document.getElementById("jp-segment").innerHTML = "Now playing: SEGMENT "+segment;
+                return false;
           });
           
-          // Previous
-          $(wrapper).find('.jp-previous').click(function() {
-            /*$(this).blur();
-            Drupal.jPlayer.previous(wrapper, player);
-            return false;*/
-              /*
-            var startTime;            
-            stopTime = stopTime - 5;
-            startTime = stopTime - 5;
-            $(this).jPlayer("pause", startTime);
-          */
-            flag = 2;
-            return false;
-          });
-      
-        
+          $(".jp-previous").click(function() {
+                if(stopTime <= 5) {
+                    stopTime = 5;
+                    segment = 1;
+                }
+                else {
+                    stopTime = stopTime - 5;
+                    segment--;
+                }
+                startTime = stopTime - 5;
+                document.getElementById("jp-segment").innerHTML = "Now playing: SEGMENT "+segment;
+                return false;
+          });        
       });
     }
   };
