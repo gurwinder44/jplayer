@@ -330,6 +330,7 @@ function create_transcript_webform_node($file_name) {
                     'extra' => array(
                         'title_display' => 'before',
                         'private' => 0,
+                        'maxlength' => '255',
                     ),
                     'page_num' => $i+1,
                 );
@@ -339,8 +340,6 @@ function create_transcript_webform_node($file_name) {
     }
     
     // If user is reviewing
-    //global $user;
-    //if(in_array('administrator', $user->roles)) {
         
         // Page break
         $components[] = array(
@@ -385,7 +384,6 @@ function create_transcript_webform_node($file_name) {
             'weight' => ($index+1),
             'page_num' => $i,
         );
-    //}
     
     /* Where to email it to?
     $emails = array(
