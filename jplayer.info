@@ -5,6 +5,7 @@ core = 7.x
 dependencies[] = file
 dependencies[] = webform
 dependencies[] = remote_file_source
+dependencies[] = views
 configure = admin/config/media/jplayer
 
 files[] = jplayer.install

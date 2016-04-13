@@ -166,6 +166,7 @@ var codes = {
                 
                     // Get page number from Drupal.settings and set player position
                     head = parseInt(Drupal.settings.jplayer.pageinfo, 10);
+                    
                     if(isNaN(head)) {head = 1;}
                     segment = ((head-1)*6) + 1;
                     head = (head-1) * 30;

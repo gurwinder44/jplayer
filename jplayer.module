@@ -339,12 +339,12 @@ function create_transcript_webform_node($file_name) {
         }
     }
     
-    // If user is reviewing
-        
+    // If user is reviewing        
         // Page break
+        $page_num = ceil(($number+1)/6);
         $components[] = array(
-            'name' => 'Page ' . ($number+1),
-            'form_key' => 'page_' . ($number+1),
+            'name' => 'Page ' . $page_num,
+            'form_key' => 'page_' . $page_num,
             'type' => 'pagebreak',
             'weight' => $index,
             'pid' => 0,
@@ -354,7 +354,7 @@ function create_transcript_webform_node($file_name) {
                 'prev_page_label' => 'Previous',
                 'private' => 0,
             ),
-            'page_num' => ($number+1),
+            'page_num' => $page_num,
         );
         
         // Comment box
