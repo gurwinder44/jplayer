@@ -52,6 +52,7 @@ var codes = {
         var type = $(this).parent().attr('class');
         player.playerType = $(this).parent().attr('class');
         
+        // SINGLE PLAYER NOT USED FOR OUR CUSTOM MODULE
         if (type == 'jp-type-single') {
           // Initialise single player
           $(player).jPlayer({
@@ -92,10 +93,6 @@ var codes = {
                     stopTime = head + 5;
                     $(this).jPlayer("pause", head);                
             },
-            ended: function() {
-                /*stopTime = 5;
-                segment = 1;*/
-            },
             swfPath: Drupal.settings.jPlayer.swfPath,
             cssSelectorAncestor: '#'+playerId+'_interface',
             solution: playerSettings.solution,
@@ -104,23 +101,13 @@ var codes = {
             volume: playerSettings.volume,
             muted: playerSettings.muted
           });
-          
-          /* Pause after every 5 seconds
-          $(player).bind($.jPlayer.event.timeupdate, function(event) {
-              if(event.jPlayer.status.currentTime > stopTime) {
-                  if(flag == 0) {
-                      stopTime = stopTime - 5;
-                }
-                  $(this).jPlayer("pause", stopTime);                  
-                  stopTime = stopTime + 5;
-              }
-          });*/
-          
-         
         }
+        
+        // PLAYLIST PLAYER: USED BY CUSTOM MODULE
         else {
             action = parseInt(Drupal.settings.jplayer.action, 10);
-            // Transcriber
+            
+            // TRANSCRIBER
             if(action == 0) {
           // Initialise playlist player
           $(player).jPlayer({
@@ -156,7 +143,6 @@ var codes = {
               
             },
             loadeddata: function(event) {
-                
                     // Get duration and calculate number of segments
                     songDuration = event.jPlayer.status.duration;
                     segments = Math.ceil(songDuration/5);
@@ -208,8 +194,9 @@ var codes = {
           });
             }
             
-            else {
-                // Normal player or annotator
+            
+            // NORMAL OR ANNOTATOR PLAYER
+            else {                
                 // Initialise playlist player
           $(player).jPlayer({
             ready: function() {
@@ -244,7 +231,6 @@ var codes = {
               
             },
              loadeddata: function(event) {
-                 
                  // Get duration and calculate number of segments
                  songDuration = event.jPlayer.status.duration;
                  segments = Math.ceil(songDuration/5);
@@ -252,9 +238,9 @@ var codes = {
                  // Set a cookie containing the number of segments
                  document.cookie = 'seginfo='+songDuration+'; path=/';
                  
-                 // Save the time when it was paused so we can come back to it
+                 // Go to the time where it was paused
                  var timeval = sessionStorage.getItem("timepoint");
-                 atime = Math.floor(timeval);                 
+                 atime = Math.floor(timeval);
                  $(this).jPlayer("pause", atime);
             },
             swfPath: Drupal.settings.jPlayer.swfPath,
@@ -305,6 +291,15 @@ var codes = {
                 document.getElementById("jp-segment").innerHTML = "Now playing: SEGMENT "+segment;
                 $("*").jPlayer("play", startTime);
                 return false;
+          });
+          
+          $(".trbutton").click(function() {
+              var seekTime = $(this).attr("id");
+              startTime = parseInt(seekTime, 10);
+              stopTime = startTime + 5;
+              segment = (startTime/5) + 1;
+              document.getElementById("jp-segment").innerHTML = "Now playing: SEGMENT "+segment;
+              $("*").jPlayer("play", startTime);
           });
           
           // Keyboard shortcuts to replay, next or previous

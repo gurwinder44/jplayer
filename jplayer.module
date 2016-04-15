@@ -30,6 +30,31 @@ function jplayer_menu() {
  ****************************************************************************/
 
 /**
+ * Implements hook_node_info().
+ * Used to create the Transcript and Annotation content types.
+ *
+function jplayer_node_info() {
+    return array(
+        
+        'transcript' => array(
+            'name' => t('Transcript'),
+            'base' => 'transcript',
+            'description' => t('Transcript of an audio file in HTML and XML formats'),
+            'has_title' => TRUE,
+            'title_label' => t('ID'),
+        ),
+        
+        'annotation' => array(
+            'name' => t('Annotation'),
+            'base' => 'annotation',
+            'description' => t('Annotations with timestamps and taxonomy terms for an audio file'),
+            'has_title' => TRUE,
+            'title_label' => t('ID'),
+        ),
+    );
+}*/
+
+/**
  * Implements hook_help().
  */
 function jplayer_help($path, $arg)
@@ -56,7 +81,7 @@ function jplayer_init() {
     });', 'inline');    // Using the * selector for now, but would be better if somehow the specific jplayer object ID could be obtained
     
     $action = 1;
-    if(drupal_match_path($url, 'Transcriber/*')) {
+    if(drupal_match_path($url, 'Transcriber/*') || drupal_match_path($url, 'Transcript/*')) {
         $action = 0;        
     }
     if(request_path() == 'Annotator/*') {
@@ -436,7 +461,7 @@ function create_transcript_webform_node($file_name) {
     
     // Save the node
     $node = node_submit($node);
-    node_save($node);    
+    node_save($node);
 }
 
 /**
@@ -470,7 +495,7 @@ function submit_redirect_transcript($form, &$form_state) {
     unset($raw_data[count($raw_data)-1]);
     
     // Format the data
-    $txt_data = format_data_txt($raw_data);
+    $txt_data = format_data_txt($audio_file, $raw_data);
     $xml_data = format_data_xml($audio_file, $raw_data, date('m/d/y H:i:s'), $creator);
     
     // Write transcript data to file
@@ -523,9 +548,9 @@ function submit_redirect_transcript($form, &$form_state) {
 }
 
 /**
- * Format the transcript to a timestamped text file
+ * Format the transcript to timestamped text (actually HTML)
  */
-function format_data_txt($raw_data) {
+function format_data_txt($audio_file, $raw_data) {
     
     $data = array();
     for($segment=0; $segment<count($raw_data); $segment++) {
@@ -535,15 +560,18 @@ function format_data_txt($raw_data) {
         $mins = sprintf('%02d', floor(($seconds - ($hours*3600)) / 60));
         $secs = sprintf('%02d', floor($seconds % 60));
         $timestamp = $hours . ':' . $mins . ':' . $secs;
-                
+        
+        // Create a link out of the timestamp and pass a query string indicating which time to play from
+        $timelink = '<button class="trbutton" id="' . $seconds . '"></button>';
+        
         // Concatenate the timestamp with the data
-        $data[$segment] = $timestamp . "\t" . $raw_data[$segment];
+        $data[$segment] = '<p>' . $timelink . ' ' . $timestamp . ' ' . $raw_data[$segment] . '</p> <br />';
     }
     $formatted_string = $data[0];
     for($segment=1; $segment<count($data); $segment++) {
-        $formatted_string = $formatted_string . "\r\n" . $data[$segment];
+        $formatted_string = $formatted_string . $data[$segment];
     }
-    return $formatted_string;    
+    return $formatted_string;
 }
 
 /**
@@ -656,15 +684,21 @@ function create_transcript_node($file_node, $filepath, $txt_data, $creator) {
     $node->comment = 1;
     $node->uid = $creator->uid;
     $node->name = $creator->name;
+    $alias = 'Transcript/' . $file_node->nid;
+    $node->path = array('alias' => $alias);
     
     // Add body
-    $node->body[LANGUAGE_NONE][0]['value'] = $txt_data;
+    $node->body[$node->language][0]['format'] = 'full_html';
+    $node->body[$node->language][0]['value'] = $txt_data;
     
     // Add entity reference to audio
     $node->field_audio_file[$node->language][0]['target_id'] = $file_node->nid;
-            
+    
+    // Add a file (player)
+    $node->field_transcript_player[$node->language][0] = $file_node->field_remote_file_url[$file_node->language][0];
+    
     // Add file
-    $file = new stdClass();    
+    $file = new stdClass();
     $file->uri = $filepath;
     $file->filemime = file_get_mimetype($file->uri);
     $file->status = 1;
