@@ -565,7 +565,7 @@ function format_data_txt($audio_file, $raw_data) {
         $timelink = '<button class="trbutton" id="' . $seconds . '"></button>';
         
         // Concatenate the timestamp with the data
-        $data[$segment] = '<p>' . $timelink . ' ' . $timestamp . ' ' . $raw_data[$segment] . '</p> <br />';
+        $data[$segment] = '<p>' . $timelink . ' <span style="color:green">' . $timestamp . '</span> ' . $raw_data[$segment] . '</p> <br />';
     }
     $formatted_string = $data[0];
     for($segment=1; $segment<count($data); $segment++) {

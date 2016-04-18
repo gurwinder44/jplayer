@@ -179,6 +179,7 @@ var codes = {
                 if(startTime%30 == 0) {
                     document.getElementById("jp-segment").innerHTML = "Now playing: SEGMENT "+segment;
                 }
+                $(this).jPlayer("play", startTime);
             });
           
           
@@ -196,7 +197,7 @@ var codes = {
             
             
             // NORMAL OR ANNOTATOR PLAYER
-            else {                
+            else {
                 // Initialise playlist player
           $(player).jPlayer({
             ready: function() {

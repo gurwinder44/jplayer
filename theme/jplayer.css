@@ -86,15 +86,15 @@ div.jp-interface ul.jp-controls a {
 .trbutton {
     width:40px;
     height:40px;
-    background: url("jplayer.blue.monday.jpg") 0 0 no-repeat;
     border: none;
+    background: url("jplayer.blue.monday.jpg") 0 0 no-repeat;
 }
 
 .trbutton:hover {
     width:40px;
     height:40px;
-    background: url("jplayer.blue.monday.jpg") -41px 0 no-repeat;
     border: none;
+    background: url("jplayer.blue.monday.jpg") -41px 0 no-repeat;
 }
 
 /****************************************************************************
