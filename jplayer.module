@@ -562,7 +562,7 @@ function format_data_txt($audio_file, $raw_data) {
         $timestamp = $hours . ':' . $mins . ':' . $secs;
         
         // Create a link out of the timestamp and pass a query string indicating which time to play from
-        $timelink = '<button class="trbutton" id="' . $seconds . '"></button>';
+        $timelink = '<button type="button" class="trbutton" id="' . $seconds . '"></button>';
         
         // Concatenate the timestamp with the data
         $data[$segment] = '<p>' . $timelink . ' <span style="color:green">' . $timestamp . '</span> ' . $raw_data[$segment] . '</p> <br />';
@@ -765,6 +765,30 @@ function jplayer_form_webform_client_form_alter(&$form, &$form_state) {
     elseif(strpos($form['#node']->title, 'Annotation') != FALSE) {        
         $form['#submit'][] = 'submit_redirect_annotation';
     }
+}
+
+/**
+ * Implements hook_webform_submission_insert().
+ * Used to keep the player position correct after saving draft.
+ */
+function jplayer_webform_submission_insert($node, $submission) {
+    $page_num = $submission->highest_valid_page;
+    // Set page number for jplayer's javascript to access
+    drupal_add_js(array('jplayer' => array(
+        'pageinfo' => $page_num
+    )), 'setting');
+}
+
+/**
+ * Implements hook_webform_submission_update().
+ * Used to keep the player position correct after saving draft.
+ */
+function jplayer_webform_submission_update($node, $submission) {
+    $page_num = $submission->highest_valid_page;
+    // Set page number for jplayer's javascript to access
+    drupal_add_js(array('jplayer' => array(
+        'pageinfo' => $page_num
+    )), 'setting');
 }
 
 /**
@@ -1205,7 +1229,7 @@ function submit_redirect_annotation($form, &$form_state) {
     $node_name = $audio_file->title . ' Annotation @ ' . $timestamp;
     $anode = db_query('SELECT nid FROM {node} WHERE type = :type AND title = :title', array(':type' => 'annotation', ':title' => $node_name))->fetchField();
     if($anode == NULL) {
-        create_annotation_node($audio_file, $tid, $type, $timestamp);
+        create_annotation_node($audio_file, $tid, $type, $timestamp, $timepoint);
     }
     else {
         modify_annotation_node($anode, $tid, $type);
@@ -1270,7 +1294,7 @@ function get_tid($term_name, $vocabulary) {
 /**
  * Create a new node for the annotation
  */
-function create_annotation_node($audio_file, $tid, $type, $timestamp) {
+function create_annotation_node($audio_file, $tid, $type, $timestamp, $timepoint) {
     // Basic node creation
     $node = new stdClass();
     $node->type = 'annotation';
@@ -1297,7 +1321,10 @@ function create_annotation_node($audio_file, $tid, $type, $timestamp) {
     }
     
     // Add timestamp
-    $node->field_timestamp[$node->language][0]['value'] = $timestamp;
+    $id = $audio_file->nid . '-' . floor($timepoint);
+    $timelink = '<p><button type="button" class="anbutton" id="' . $id . '"></button> ' . $timestamp . '</p>';
+    $node->field_timestamp[$node->language][0]['value'] = $timelink;
+    $node->field_timestamp[$node->language][0]['format'] = 'full_html';
     
     node_save($node);
 }
@@ -1307,12 +1334,40 @@ function create_annotation_node($audio_file, $tid, $type, $timestamp) {
  */
 function modify_annotation_node($anode, $tid, $type) {
     $node = node_load($anode);
+    $cterms = array();
+    $uterms = array();
     // Add annotations
     if($type == 'controlled') {
-        $node->field_controlled_annotations[$node->language][]['tid'] = $tid;
+        // Check if it already exists, and add the term if it doesn't
+        if(field_get_items('node', $node, 'field_controlled_annotations')) {
+            $count = count($node->field_controlled_annotations[$node->language]);
+            for($i=0; $i<$count; $i++) {
+                $cterms[] = $node->field_controlled_annotations[$node->language][$i]['tid'];
+            }
+        }
+                
+        if(in_array($tid, $cterms)) {
+            drupal_set_message(t('The term has already been added.'), 'warning');
+        }
+        else {
+            $node->field_controlled_annotations[$node->language][]['tid'] = $tid;
+        }
     }
     else {
-        $node->field_uncontrolled_annotations[$node->language][]['tid'] = $tid;
+        // Check if it already exists, and add the term if it doesn't
+        if(field_get_items('node', $node, 'field_uncontrolled_annotations')) {
+            $count = count($node->field_uncontrolled_annotations[$node->language]);
+            for($i=0; $i<$count; $i++) {
+                $uterms[] = $node->field_uncontrolled_annotations[$node->language][$i]['tid'];
+            }
+        }
+        
+        if(in_array($tid, $uterms)) {
+            drupal_set_message(t('The term has already been added.'), 'warning');
+        }
+        else {
+            $node->field_uncontrolled_annotations[$node->language][]['tid'] = $tid;
+        }
     }
     node_save($node);
 }

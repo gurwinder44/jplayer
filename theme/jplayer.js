@@ -52,7 +52,7 @@ var codes = {
         var type = $(this).parent().attr('class');
         player.playerType = $(this).parent().attr('class');
         
-        // SINGLE PLAYER NOT USED FOR OUR CUSTOM MODULE
+        // SINGLE PLAYER; USED FOR ANNOTATION VIEW
         if (type == 'jp-type-single') {
           // Initialise single player
           $(player).jPlayer({
@@ -77,21 +77,6 @@ var codes = {
               if (playerSettings.autoplay == true) {
                 $(this).jPlayer("play");
               }
-            },
-            loadeddata: function(event) {
-                    // Get duration and calculate number of segments
-                    songDuration = event.jPlayer.status.duration;
-                    segments = Math.ceil(songDuration/5);
-                                            
-                    // Set a cookie containing the number of segments
-                    document.cookie = 'seginfo='+songDuration+'; path=/';
-                
-                    // Get page number from Drupal.settings and set player position
-                    head = parseInt(Drupal.settings.jplayer.pageinfo, 10);
-                    segment = ((head-1)*6) + 1;
-                    head = (head-1) * 30;
-                    stopTime = head + 5;
-                    $(this).jPlayer("pause", head);                
             },
             swfPath: Drupal.settings.jPlayer.swfPath,
             cssSelectorAncestor: '#'+playerId+'_interface',
@@ -294,6 +279,7 @@ var codes = {
                 return false;
           });
           
+          // Binding for PLAY buttons in Transcript
           $(".trbutton").click(function() {
               var seekTime = $(this).attr("id");
               startTime = parseInt(seekTime, 10);
@@ -301,6 +287,16 @@ var codes = {
               segment = (startTime/5) + 1;
               document.getElementById("jp-segment").innerHTML = "Now playing: SEGMENT "+segment;
               $("*").jPlayer("play", startTime);
+          });
+          
+          // Binding for PLAY buttons for Annotation View
+          $(".anbutton").click(function() {
+              var id_string = $(this).attr("id");
+              var id = id_string.split('-');
+              var node_id = id[0];
+              var time = id[1];
+              var head = parseInt(time, 10);
+              $("[id|='jplayer-node-"+node_id+"']").jPlayer("play", head);
           });
           
           // Keyboard shortcuts to replay, next or previous
