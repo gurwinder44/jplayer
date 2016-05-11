@@ -289,7 +289,7 @@ var codes = {
               $("*").jPlayer("play", startTime);
           });
           
-          // Binding for PLAY buttons for Annotation View
+          // Binding for PLAY buttons for Annotation 
           $(".anbutton").click(function() {
               var id_string = $(this).attr("id");
               var id = id_string.split('-');
