@@ -807,7 +807,7 @@ function review_callback($form, &$form_state) {
     // Fill out mail params
     $from = $creator->mail;
     $key = 'notice';
-    $body[] = 'A transcript has been submitted for review by ' . $creator->name . ' and needs review. Please review as soon as possible.';
+    $body[] = 'A transcript has been submitted by ' . $creator->name . ' and needs review. Please review as soon as possible.';
     $params = array(
         'body' => $body,
         'subject' => 'Transcript Submitted for Review',
